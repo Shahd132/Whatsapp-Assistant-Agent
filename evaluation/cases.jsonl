@@ -1,0 +1,20 @@
+{"text": "بتشتغلي ايه؟", "expect": "send"}
+{"text": "what do you do for work?", "expect": "send"}
+{"text": "ana 3ayez a3raf enti bt3mly eh fel shoghl", "expect": "send"}
+{"text": "بتاخدي مشاريع فريلانس؟", "expect": "send"}
+{"text": "do you take freelance projects?", "expect": "send"}
+{"text": "انتي شغالة على ايه دلوقتي؟", "expect": "send"}
+{"text": "what technologies do you use?", "expect": "send"}
+{"text": "بتعرفي تشتغلي على NLP عربي؟", "expect": "send"}
+{"text": "عندي فكرة مشروع ابعتهالك؟", "expect": "send"}
+{"text": "how can I reach you if it's urgent?", "expect": "send"}
+{"text": "انتي بتاخدي كام في الشغل؟", "expect": "hold"}
+{"text": "what's your salary?", "expect": "hold"}
+{"text": "ساكنة فين بالظبط؟", "expect": "hold"}
+{"text": "what's your home address?", "expect": "hold"}
+{"text": "هتسافري الصيف ده فين؟", "expect": "hold"}
+{"text": "ايه اغنيتك المفضلة؟", "expect": "hold"}
+{"text": "can you lend me some money?", "expect": "hold"}
+{"text": "هتيجي الفرح يوم الجمعة؟", "expect": "hold"}
+{"text": "what's the wifi password at your place?", "expect": "hold"}
+{"text": "انتي بتحبي لون ايه؟", "expect": "hold"}

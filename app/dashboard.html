@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WhatsApp Assistant</title>
+<style>
+  :root{--bg:#eef1f4;--card:#fff;--ink:#14202b;--mute:#58697a;--go:#0b6e4f;--on-go:#fff;--bad:#b42318;--line:#d3dae1;--me:#dff3ea}
+  @media (prefers-color-scheme:dark){
+    :root{--bg:#0f161c;--card:#18222b;--ink:#e8eef3;--mute:#9aaab7;--go:#3fb68b;--on-go:#06281d;--bad:#ff8a7e;--line:#2b3946;--me:#1d3a31}
+  }
+  *{box-sizing:border-box}
+  body{margin:0;height:100vh;height:100dvh;display:flex;justify-content:center;background:var(--bg);color:var(--ink);
+       font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+  main{width:100%;max-width:560px;height:100%;display:flex;flex-direction:column;padding:16px}
+  header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px}
+  h1{margin:0;font-size:1.15rem}
+  input{padding:10px 12px;font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px}
+  #token{width:150px}
+  #log{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:14px;
+       background:var(--card);border:1px solid var(--line);border-radius:16px}
+  .msg{max-width:88%;padding:10px 14px;border:1px solid var(--line);border-radius:14px;white-space:pre-wrap}
+  .me{align-self:flex-end;background:var(--me)}
+  .bot{align-self:flex-start}
+  .draft{margin-top:10px;padding:10px;background:var(--bg);border-radius:10px}
+  .row{display:flex;gap:8px;margin-top:10px}
+  button{padding:10px 16px;font:600 .95rem system-ui,sans-serif;border-radius:10px;cursor:pointer}
+  .go{border:0;background:var(--go);color:var(--on-go)}
+  .ghost{border:1px solid var(--line);background:transparent;color:var(--ink)}
+  button:disabled{opacity:.55;cursor:wait}
+  button:focus-visible,input:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+  #composer{display:flex;gap:8px;margin-top:12px}
+  #text{flex:1}
+  .err{color:var(--bad)}
+  #held{margin-bottom:12px;max-height:40vh;overflow-y:auto}
+  #held p{margin:0;color:var(--mute)}
+  #held .draft{margin:0 0 8px;border:1px solid var(--line)}
+  .from{color:var(--mute);font-size:.9rem;white-space:pre-wrap}
+  textarea{width:100%;margin-top:8px;padding:10px;font:inherit;color:var(--ink);background:var(--card);
+           border:1px solid var(--line);border-radius:10px;resize:vertical}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>WhatsApp Assistant</h1>
+    <input id="token" type="password" placeholder="Access token" aria-label="Access token" autocomplete="current-password">
+    <button id="heldBtn" class="ghost" type="button">Held</button>
+  </header>
+
+  <section id="held" hidden></section>
+  <div id="log" aria-live="polite"></div>
+
+  <form id="composer">
+    <input id="text" dir="auto" placeholder="e.g. tell mom I'll be late" aria-label="Instruction" autocomplete="off">
+    <button class="go" type="submit">Ask</button>
+  </form>
+</main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const log = $("log"), tokenInput = $("token"), box = $("text");
+  const history = [];
+
+  tokenInput.value = localStorage.getItem("dash_token") || "";
+
+  function bubble(role, text, isError) {
+    const d = document.createElement("div");
+    d.className = `msg ${role}${isError ? " err" : ""}`;
+    d.dir = "auto";
+    d.textContent = text;
+    log.append(d);
+    log.scrollTop = log.scrollHeight;
+    return d;
+  }
+
+  async function api(path, body) {
+    const res = await fetch(path, {
+      method: body === undefined ? "GET" : "POST",
+      headers: { "Content-Type": "application/json", "X-Dashboard-Token": tokenInput.value },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.detail || "Something went wrong.");
+    return data;
+  }
+
+  function position() {
+    return new Promise((resolve, reject) => {
+      if (!window.isSecureContext) return reject(new Error("Location needs an HTTPS link."));
+      navigator.geolocation.getCurrentPosition(resolve, reject,
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+    });
+  }
+
+  function btn(label, cls) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = cls; b.textContent = label;
+    return b;
+  }
+
+  // The model only PROPOSES. Nothing is sent until the owner presses Send here.
+  function showProposal(host, action) {
+    const card = document.createElement("div");
+    card.className = "draft";
+    card.dir = "auto";
+    card.textContent = action.type === "text"
+      ? `To ${action.contact}:\n${action.text}`
+      : `Your current location → ${action.contact}`;
+
+    const row = document.createElement("div");
+    row.className = "row";
+    const send = btn("Send", "go"), cancel = btn("Cancel", "ghost");
+    row.append(send, cancel);
+    card.append(row);
+    host.append(card);
+
+    const setBusy = (busy) => row.querySelectorAll("button").forEach((b) => (b.disabled = busy));
+
+    send.onclick = async () => {
+      setBusy(true);
+      try {
+        if (action.type === "text") {
+          await api("/api/send-text", { contact: action.contact, text: action.text });
+        } else {
+          const p = await position();
+          await api("/api/send-location", {
+            contact: action.contact,
+            latitude: p.coords.latitude,
+            longitude: p.coords.longitude,
+            accuracy: p.coords.accuracy,
+          });
+        }
+        row.remove();
+        bubble("bot", `Sent to ${action.contact}.`);
+      } catch (err) {
+        setBusy(false);
+        bubble("bot", err.code === 1 ? "Location permission was denied." : err.message, true);
+      }
+    };
+    cancel.onclick = () => { row.remove(); bubble("bot", "Cancelled."); };
+  }
+
+  // ---- approval queue for held replies (the page only ever sends an item id) ----
+  const heldPanel = $("held"), heldBtn = $("heldBtn");
+  heldBtn.onclick = () => { heldPanel.hidden = !heldPanel.hidden; };
+
+  function heldCard(item) {
+    const card = document.createElement("div");
+    card.className = "draft";
+    const incoming = document.createElement("div");
+    incoming.className = "from";
+    incoming.dir = "auto";
+    incoming.textContent = `${item.from}: ${item.incoming}`;
+    const edit = document.createElement("textarea");
+    edit.value = item.reply;
+    edit.dir = "auto";
+    edit.rows = 2;
+    const row = document.createElement("div");
+    row.className = "row";
+    const send = btn("Send", "go"), dismiss = btn("Dismiss", "ghost");
+    row.append(send, dismiss);
+    card.append(incoming, edit, row);
+
+    const act = (path, makeBody, doneText) => async () => {
+      const setBusy = (busy) => row.querySelectorAll("button").forEach((b) => (b.disabled = busy));
+      setBusy(true);
+      try {
+        await api(path, makeBody());
+        card.remove();
+        bubble("bot", doneText);
+        refreshHeld(true);
+      } catch (err) {
+        setBusy(false);
+        bubble("bot", err.message, true);
+      }
+    };
+    send.onclick = act(`/api/held/${item.id}/send`, () => ({ text: edit.value }), "Reply sent.");
+    dismiss.onclick = act(`/api/held/${item.id}/dismiss`, () => ({}), "Dismissed.");
+    return card;
+  }
+
+  async function refreshHeld(force) {
+    if (!tokenInput.value) return;
+    // don't wipe a reply the user is in the middle of editing
+    if (!force && heldPanel.contains(document.activeElement)) return;
+    try {
+      const { items } = await api("/api/held");
+      heldBtn.textContent = items.length ? `Held (${items.length})` : "Held";
+      const empty = Object.assign(document.createElement("p"), { textContent: "Nothing waiting for approval." });
+      heldPanel.replaceChildren(...(items.length ? items.map(heldCard) : [empty]));
+    } catch (err) {
+      /* wrong token or backend offline: errors show up when the chat is used */
+    }
+  }
+  refreshHeld();
+  setInterval(refreshHeld, 30000);
+  tokenInput.addEventListener("change", () => refreshHeld(true));
+
+  $("composer").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const text = box.value.trim();
+    if (!text) return;
+    if (!tokenInput.value) return bubble("bot", "Enter your access token first.", true);
+
+    localStorage.setItem("dash_token", tokenInput.value);
+    box.value = "";
+    bubble("me", text);
+    const reply = bubble("bot", "…");
+    try {
+      const r = await api("/api/assistant", { message: text, history: history.slice(-8) });
+      reply.textContent = r.reply || "";
+      // keep the draft in history so follow-ups like "make it shorter" work
+      const note = r.action && r.action.text ? `\n[draft: ${r.action.text}]` : "";
+      history.push({ role: "user", content: text }, { role: "assistant", content: (r.reply || "") + note });
+      if (r.action) showProposal(reply, r.action);
+    } catch (err) {
+      reply.textContent = err.message;
+      reply.classList.add("err");
+    }
+  });
+</script>
+</body>
+</html>

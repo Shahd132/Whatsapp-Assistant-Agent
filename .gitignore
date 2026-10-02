@@ -1,0 +1,11 @@
+venv/
+node_modules/
+.env
+.wwebjs_auth/
+.wwebjs_cache/
+contacts.json
+data/kb/
+data/assistant.db
+data/style_index/
+raw_exports/
+__pycache__/
