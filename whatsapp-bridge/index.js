@@ -29,26 +29,22 @@ const ALLOWED_CONTACTS = (process.env.ALLOWED_CONTACTS || "")
 // Some contacts show up as an opaque "@lid" privacy ID instead of their
 // real phone number ("@c.us") — this resolves those back to a phone
 // number first, so ALLOWED_CONTACTS only ever needs to list phone numbers.
-async function isAllowed(msg) {
+async function checkAllowed(msg) {
   const from = msg.from;
-  if (from.endsWith("@g.us") && !ALLOW_GROUPS) return false;
-  if (ALLOWED_CONTACTS.length === 0) return true; // open — fine for now, tighten before going live
-
   let number = from.split("@")[0];
+  if (from.endsWith("@g.us") && !ALLOW_GROUPS) return { allowed: false, number };
 
   if (from.endsWith("@lid")) {
     try {
       const contact = await msg.getContact();
-      if (contact && contact.number) {
-        number = contact.number.replace(/\D/g, ""); // digits only
-      }
+      if (contact && contact.number) number = contact.number.replace(/\D/g, ""); // digits only
     } catch (err) {
       console.error("Could not resolve @lid contact to a phone number:", err.message);
-      // falls through and checks the raw @lid id below, as a last resort
     }
   }
 
-  return ALLOWED_CONTACTS.includes(number);
+  if (ALLOWED_CONTACTS.length === 0) return { allowed: true, number }; // open: tighten before going live
+  return { allowed: ALLOWED_CONTACTS.includes(number), number };
 }
 
 const puppeteerConfig = {
@@ -92,7 +88,8 @@ client.on("message", async (msg) => {
       console.log(`[BLOCKED - fromMe] ${msg.from}: ${msg.body}`);
       return;
     }
-    if (!(await isAllowed(msg))) {
+    const { allowed, number } = await checkAllowed(msg);
+    if (!allowed) {
       console.log(`[BLOCKED - not allowed] ${msg.from}: ${msg.body}`);
       return;
     }
@@ -104,6 +101,7 @@ client.on("message", async (msg) => {
     }
       const payload = {
         from: msg.from,
+        number,
         body: msg.body || "",
         type: "text",
         media_base64: null,
@@ -126,7 +124,10 @@ client.on("message", async (msg) => {
         }
       }
 
-      const { data } = await axios.post(BACKEND_URL, payload, { timeout: 180000 });
+      const { data } = await axios.post(BACKEND_URL, payload, {
+        timeout: 180000,
+        headers: { "x-bridge-token": process.env.BRIDGE_API_TOKEN || "" },
+      });
 
       if (data.action === "send") {
         if (data.reply_audio_base64) {

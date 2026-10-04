@@ -8,13 +8,14 @@ instruct it (prompt injection).
 import json
 import os
 
-from fastapi import APIRouter, Header
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
-from app.dashboard import _check_token, _contact_names
+from app.dashboard import _contact_names, require_auth
 from app.llm import _STYLE_EXAMPLES, _get_client
 
 router = APIRouter()
+AUTH = [Depends(require_auth)]
 
 TOOLS = [
     {"type": "function", "function": {
@@ -45,9 +46,8 @@ class ChatRequest(BaseModel):
     history: list[dict] = Field(default_factory=list, max_length=10)
 
 
-@router.post("/api/assistant")
-def assistant(body: ChatRequest, x_dashboard_token: str = Header(default="")):  # plain def: runs in a thread pool
-    _check_token(x_dashboard_token)
+@router.post("/api/assistant", dependencies=AUTH)
+def assistant(body: ChatRequest):  # plain def: runs in a thread pool
     names = _contact_names()
     history = [
         {"role": m["role"], "content": str(m.get("content", ""))[:1500]}

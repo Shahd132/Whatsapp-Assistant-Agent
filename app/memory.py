@@ -1,21 +1,21 @@
-from collections import defaultdict, deque
+"""Per-contact conversation memory, stored in SQLite so it survives restarts."""
+from app import db
 
 MAX_TURNS_PER_CONTACT = 8  # 8 user+assistant exchanges = 16 messages of context
-
-_memory: dict[str, deque] = defaultdict(lambda: deque(maxlen=MAX_TURNS_PER_CONTACT * 2))
+_KEEP = MAX_TURNS_PER_CONTACT * 2
 
 
 def add_user_message(contact_id: str, text: str) -> None:
-    _memory[contact_id].append({"role": "user", "content": text})
+    db.add_message(contact_id, "user", text, keep=_KEEP)
 
 
 def add_assistant_message(contact_id: str, text: str) -> None:
-    _memory[contact_id].append({"role": "assistant", "content": text})
+    db.add_message(contact_id, "assistant", text, keep=_KEEP)
 
 
 def get_history(contact_id: str) -> list[dict]:
-    return list(_memory[contact_id])
+    return db.get_messages(contact_id, _KEEP)
 
 
 def clear(contact_id: str) -> None:
-    _memory.pop(contact_id, None)
+    db.clear_messages(contact_id)

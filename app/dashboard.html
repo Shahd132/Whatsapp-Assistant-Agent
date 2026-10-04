@@ -10,13 +10,13 @@
     :root{--bg:#0f161c;--card:#18222b;--ink:#e8eef3;--mute:#9aaab7;--go:#3fb68b;--on-go:#06281d;--bad:#ff8a7e;--line:#2b3946;--me:#1d3a31}
   }
   *{box-sizing:border-box}
+  [hidden]{display:none !important}
   body{margin:0;height:100vh;height:100dvh;display:flex;justify-content:center;background:var(--bg);color:var(--ink);
        font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
   main{width:100%;max-width:560px;height:100%;display:flex;flex-direction:column;padding:16px}
-  header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px}
-  h1{margin:0;font-size:1.15rem}
+  header{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+  h1{margin:0 auto 0 0;font-size:1.15rem}
   input{padding:10px 12px;font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px}
-  #token{width:150px}
   #log{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:14px;
        background:var(--card);border:1px solid var(--line);border-radius:16px}
   .msg{max-width:88%;padding:10px 14px;border:1px solid var(--line);border-radius:14px;white-space:pre-wrap}
@@ -27,43 +27,147 @@
   button{padding:10px 16px;font:600 .95rem system-ui,sans-serif;border-radius:10px;cursor:pointer}
   .go{border:0;background:var(--go);color:var(--on-go)}
   .ghost{border:1px solid var(--line);background:transparent;color:var(--ink)}
+  .rec{border:1px solid var(--bad);color:var(--bad);background:transparent}
   button:disabled{opacity:.55;cursor:wait}
   button:focus-visible,input:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
   #composer{display:flex;gap:8px;margin-top:12px}
-  #text{flex:1}
+  #text{flex:1;min-width:0}
+  #lang{padding:10px 12px}
   .err{color:var(--bad)}
-  #held{margin-bottom:12px;max-height:40vh;overflow-y:auto}
+  #held,#activity,#people{margin-bottom:12px;max-height:40vh;overflow-y:auto}
+  #activity p,#people p{margin:0;color:var(--mute)}
+  #activity .draft,#people .draft{margin:0 0 8px;border:1px solid var(--line)}
+  .person{display:flex;gap:8px;align-items:center;justify-content:space-between}
+  select{padding:10px 12px;font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px}
+  select:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
   #held p{margin:0;color:var(--mute)}
   #held .draft{margin:0 0 8px;border:1px solid var(--line)}
   .from{color:var(--mute);font-size:.9rem;white-space:pre-wrap}
   textarea{width:100%;margin-top:8px;padding:10px;font:inherit;color:var(--ink);background:var(--card);
            border:1px solid var(--line);border-radius:10px;resize:vertical}
+  /* login */
+  #gate{width:100%;max-width:560px;padding:16px;margin:auto}
+  #gate form{display:flex;flex-direction:column;gap:12px;padding:20px;background:var(--card);
+             border:1px solid var(--line);border-radius:16px}
+  #gate h1{margin:0}
+  #gate p{margin:0;color:var(--mute)}
+  #loginErr{min-height:1.5em;margin:0}
+  .pw{display:flex;gap:8px}
+  .pw input{flex:1;min-width:0}
+  .keep{display:flex;gap:8px;align-items:center;color:var(--mute);font-size:.95rem}
+  .keep input{width:auto}
 </style>
 </head>
 <body>
-<main>
+<section id="gate" hidden>
+  <form id="login">
+    <h1>WhatsApp Assistant</h1>
+    <p>Sign in to manage your assistant.</p>
+    <div class="pw">
+      <input id="password" type="password" name="password" placeholder="Password" aria-label="Password"
+             autocomplete="current-password" required>
+      <button id="showPw" class="ghost" type="button" aria-pressed="false">Show</button>
+    </div>
+    <label class="keep"><input id="remember" type="checkbox" checked> Keep me signed in on this device</label>
+    <p id="loginErr" class="err" role="alert"></p>
+    <button class="go" type="submit">Sign in</button>
+  </form>
+</section>
+
+<main id="app" hidden>
   <header>
     <h1>WhatsApp Assistant</h1>
-    <input id="token" type="password" placeholder="Access token" aria-label="Access token" autocomplete="current-password">
+    <button id="autoBtn" class="ghost" type="button" aria-pressed="true">Auto-reply: On</button>
     <button id="heldBtn" class="ghost" type="button">Held</button>
+    <button id="activityBtn" class="ghost" type="button">Activity</button>
+    <button id="peopleBtn" class="ghost" type="button">Contacts</button>
+    <button id="lockBtn" class="ghost" type="button">Sign out</button>
   </header>
 
   <section id="held" hidden></section>
+  <section id="activity" hidden></section>
+  <section id="people" hidden></section>
   <div id="log" aria-live="polite"></div>
 
   <form id="composer">
     <input id="text" dir="auto" placeholder="e.g. tell mom I'll be late" aria-label="Instruction" autocomplete="off">
+    <button id="lang" class="ghost" type="button" aria-label="Dictation language: Arabic" title="Dictation language">AR</button>
+    <button id="mic" class="ghost" type="button">Dictate</button>
     <button class="go" type="submit">Ask</button>
   </form>
 </main>
 
 <script>
   const $ = (id) => document.getElementById(id);
-  const log = $("log"), tokenInput = $("token"), box = $("text");
+  const app = $("app"), gate = $("gate"), log = $("log"), box = $("text");
   const history = [];
 
-  tokenInput.value = localStorage.getItem("dash_token") || "";
+  // ---- auth: the server sets an HttpOnly cookie; this page never sees the password ----
+  function showGate() {
+    app.hidden = true;
+    gate.hidden = false;
+    $("password").value = "";
+    $("password").type = "password";
+    $("showPw").textContent = "Show";
+    $("password").focus();
+  }
+  function showApp() {
+    gate.hidden = true;
+    app.hidden = false;
+    loadStatus();
+    refreshHeld(true);
+  }
 
+  async function api(path, body) {
+    const res = await fetch(path, {
+      method: body === undefined ? "GET" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 401) { showGate(); throw new Error("Session expired. Please sign in again."); }
+    if (!res.ok) throw new Error(data.detail || "Something went wrong.");
+    return data;
+  }
+
+  $("login").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const err = $("loginErr"), submit = e.submitter;
+    err.textContent = "";
+    submit.disabled = true;
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: $("password").value, remember: $("remember").checked }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.detail || "Couldn't sign in.");
+      showApp();
+    } catch (ex) {
+      err.textContent = ex.message;
+    } finally {
+      submit.disabled = false;
+    }
+  });
+
+  $("showPw").onclick = (e) => {
+    const input = $("password"), show = input.type === "password";
+    input.type = show ? "text" : "password";
+    e.currentTarget.textContent = show ? "Hide" : "Show";
+    e.currentTarget.setAttribute("aria-pressed", String(show));
+  };
+
+  $("lockBtn").onclick = async () => {
+    await fetch("/api/logout", { method: "POST" }).catch(() => {});
+    log.replaceChildren();
+    history.length = 0;
+    showGate();
+  };
+
+  fetch("/api/session").then((r) => (r.ok ? showApp() : showGate())).catch(showGate);
+
+  // ---- chat ----
   function bubble(role, text, isError) {
     const d = document.createElement("div");
     d.className = `msg ${role}${isError ? " err" : ""}`;
@@ -72,17 +176,6 @@
     log.append(d);
     log.scrollTop = log.scrollHeight;
     return d;
-  }
-
-  async function api(path, body) {
-    const res = await fetch(path, {
-      method: body === undefined ? "GET" : "POST",
-      headers: { "Content-Type": "application/json", "X-Dashboard-Token": tokenInput.value },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.detail || "Something went wrong.");
-    return data;
   }
 
   function position() {
@@ -143,7 +236,106 @@
 
   // ---- approval queue for held replies (the page only ever sends an item id) ----
   const heldPanel = $("held"), heldBtn = $("heldBtn");
-  heldBtn.onclick = () => { heldPanel.hidden = !heldPanel.hidden; };
+  const panels = { held: heldPanel, activity: $("activity"), people: $("people") };
+  function togglePanel(name) {
+    for (const [key, el] of Object.entries(panels)) el.hidden = key === name ? !el.hidden : true;
+    if (panels[name].hidden) return;
+    if (name === "activity") loadActivity();
+    if (name === "people") loadPeople();
+  }
+  heldBtn.onclick = () => togglePanel("held");
+  $("activityBtn").onclick = () => togglePanel("activity");
+  $("peopleBtn").onclick = () => togglePanel("people");
+
+  // ---- kill switch ----
+  const autoBtn = $("autoBtn");
+  let autoOn = true;
+  function renderAuto() {
+    autoBtn.textContent = `Auto-reply: ${autoOn ? "On" : "Paused"}`;
+    autoBtn.className = autoOn ? "ghost" : "rec";
+    autoBtn.setAttribute("aria-pressed", String(autoOn));
+  }
+  async function loadStatus() {
+    try { autoOn = (await api("/api/status")).auto_reply; renderAuto(); } catch { /* lock screen handles it */ }
+  }
+  autoBtn.onclick = async () => {
+    autoBtn.disabled = true;
+    try {
+      autoOn = (await api("/api/auto-reply", { enabled: !autoOn })).auto_reply;
+      renderAuto();
+      bubble("bot", autoOn ? "Auto-reply is on." : "Auto-reply is paused. Every reply now waits in Held for your approval.");
+    } catch (err) {
+      bubble("bot", err.message, true);
+    } finally {
+      autoBtn.disabled = false;
+    }
+  };
+
+  // ---- activity feed (from the audit log) ----
+  const who = (a) => a.name || a.target || "someone";
+  const ACTIVITY = {
+    auto_reply: (a) => `Replied automatically to ${who(a)}`,
+    held: (a) => `Held a reply to ${who(a)} for your approval`,
+    held_sent: (a) => `You sent a held reply to ${who(a)}`,
+    held_dismissed: () => "You dismissed a held reply",
+    auto_reply_toggled: (a) => `Auto-reply turned ${a.target}`,
+    mode_changed: (a) => `Contact setting changed: ${a.target}`,
+  };
+  const note = (text) => Object.assign(document.createElement("p"), { textContent: text });
+
+  async function loadActivity() {
+    const el = panels.activity;
+    try {
+      const { items } = await api("/api/audit?limit=50");
+      el.replaceChildren(...(items.length ? items.map((a) => {
+        const row = document.createElement("div");
+        row.className = "draft";
+        const when = document.createElement("div");
+        when.className = "from";
+        when.textContent = new Date(a.ts * 1000).toLocaleString();
+        const what = document.createElement("div");
+        what.dir = "auto";
+        what.textContent = (ACTIVITY[a.kind] || (() => a.kind))(a);
+        row.append(when, what);
+        return row;
+      }) : [note("No activity yet.")]));
+    } catch (err) { el.replaceChildren(note(err.message)); }
+  }
+
+  // ---- per-contact modes ----
+  const MODES = { auto: "Reply automatically", hold: "Always ask me first", ignore: "Ignore" };
+  async function loadPeople() {
+    const el = panels.people;
+    try {
+      const { contacts } = await api("/api/contact-modes");
+      el.replaceChildren(...(contacts.length ? contacts.map((c) => {
+        const row = document.createElement("div");
+        row.className = "draft person";
+        const label = document.createElement("span");
+        label.dir = "auto";
+        label.textContent = c.name;
+        const select = document.createElement("select");
+        select.setAttribute("aria-label", `Mode for ${c.name}`);
+        for (const [value, text] of Object.entries(MODES)) select.add(new Option(text, value, false, value === c.mode));
+        select.onchange = async () => {
+          select.disabled = true;
+          try { await api("/api/contact-modes", { name: c.name, mode: select.value }); }
+          catch (err) { bubble("bot", err.message, true); loadPeople(); }
+          finally { select.disabled = false; }
+        };
+        row.append(label, select);
+        return row;
+      }) : [note("No contacts yet. Add names to contacts.json.")]));
+    } catch (err) { el.replaceChildren(note(err.message)); }
+  }
+
+  const REASONS = {
+    needs_owner: "Needs you to answer",
+    not_grounded: "May contain a fact it wasn't sure about",
+    empty_reply: "The model gave no usable answer",
+    paused: "Auto-reply was paused",
+    contact_mode: "This contact is set to always ask you first",
+  };
 
   function heldCard(item) {
     const card = document.createElement("div");
@@ -151,7 +343,10 @@
     const incoming = document.createElement("div");
     incoming.className = "from";
     incoming.dir = "auto";
-    incoming.textContent = `${item.from}: ${item.incoming}`;
+    incoming.textContent = `${item.name || item.from}: ${item.incoming}`;
+    const why = document.createElement("div");
+    why.className = "from";
+    why.textContent = item.reason ? `Why held: ${REASONS[item.reason] || item.reason}` : "";
     const edit = document.createElement("textarea");
     edit.value = item.reply;
     edit.dir = "auto";
@@ -160,7 +355,7 @@
     row.className = "row";
     const send = btn("Send", "go"), dismiss = btn("Dismiss", "ghost");
     row.append(send, dismiss);
-    card.append(incoming, edit, row);
+    card.append(...(item.reason ? [incoming, why] : [incoming]), edit, row);
 
     const act = (path, makeBody, doneText) => async () => {
       const setBusy = (busy) => row.querySelectorAll("button").forEach((b) => (b.disabled = busy));
@@ -181,7 +376,7 @@
   }
 
   async function refreshHeld(force) {
-    if (!tokenInput.value) return;
+    if (app.hidden) return;
     // don't wipe a reply the user is in the middle of editing
     if (!force && heldPanel.contains(document.activeElement)) return;
     try {
@@ -190,20 +385,78 @@
       const empty = Object.assign(document.createElement("p"), { textContent: "Nothing waiting for approval." });
       heldPanel.replaceChildren(...(items.length ? items.map(heldCard) : [empty]));
     } catch (err) {
-      /* wrong token or backend offline: errors show up when the chat is used */
+      /* session expired (the lock screen is already showing) or backend offline */
     }
   }
-  refreshHeld();
   setInterval(refreshHeld, 30000);
-  tokenInput.addEventListener("change", () => refreshHeld(true));
+
+  // ---- dictation: record, transcribe on the server, fill the box. Never auto-sends. ----
+  const micBtn = $("mic"), langBtn = $("lang");
+  let lang = "ar", recorder = null, stopTimer = null;
+
+  langBtn.onclick = () => {
+    lang = lang === "ar" ? "en" : "ar";
+    langBtn.textContent = lang.toUpperCase();
+    langBtn.setAttribute("aria-label", `Dictation language: ${lang === "ar" ? "Arabic" : "English"}`);
+  };
+
+  function setMic(state) {
+    micBtn.disabled = state === "busy";
+    micBtn.className = state === "rec" ? "rec" : "ghost";
+    micBtn.textContent = { idle: "Dictate", rec: "Stop", busy: "Transcribing…" }[state];
+  }
+
+  micBtn.onclick = async () => {
+    if (recorder) return recorder.stop();
+    if (!window.isSecureContext || !navigator.mediaDevices || !window.MediaRecorder)
+      return bubble("bot", "Dictation needs an HTTPS link and a browser that supports recording.", true);
+
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      return bubble("bot", "Microphone permission was denied.", true);
+    }
+
+    const mime = ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus"]
+      .find((t) => MediaRecorder.isTypeSupported(t));
+    const chunks = [];
+    recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+    recorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+    recorder.onstop = async () => {
+      clearTimeout(stopTimer);
+      stream.getTracks().forEach((t) => t.stop());
+      const type = recorder.mimeType || "application/octet-stream";
+      recorder = null;
+      setMic("busy");
+      try {
+        const res = await fetch(`/api/transcribe?lang=${lang}`, {
+          method: "POST",
+          headers: { "Content-Type": type },
+          body: new Blob(chunks, { type }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 401) { showGate(); throw new Error("Session expired. Please sign in again."); }
+        if (!res.ok) throw new Error(data.detail || "Transcription failed.");
+        if (!data.text) throw new Error("Didn't catch anything. Try again.");
+        box.value = (box.value + " " + data.text).trim();
+        box.focus();
+      } catch (err) {
+        bubble("bot", err.message, true);
+      } finally {
+        setMic("idle");
+      }
+    };
+    recorder.start();
+    setMic("rec");
+    stopTimer = setTimeout(() => recorder && recorder.stop(), 60000); // 60 s cap
+  };
 
   $("composer").addEventListener("submit", async (e) => {
     e.preventDefault();
     const text = box.value.trim();
     if (!text) return;
-    if (!tokenInput.value) return bubble("bot", "Enter your access token first.", true);
 
-    localStorage.setItem("dash_token", tokenInput.value);
     box.value = "";
     bubble("me", text);
     const reply = bubble("bot", "…");

@@ -7,32 +7,36 @@ numbers.
 import os
 
 import httpx
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from app import db
-from app.dashboard import _check_token
+from app import contacts, db
+from app.log import log_event
+from app.dashboard import require_auth
 from app.memory import add_assistant_message
 
 router = APIRouter()
+AUTH = [Depends(require_auth)]
 
 
 class SendRequest(BaseModel):
     text: str | None = Field(default=None, max_length=4000)
 
 
-@router.get("/api/held")
-def list_held(x_dashboard_token: str = Header(default="")):
-    _check_token(x_dashboard_token)
-    return {"items": [
-        {"id": r["id"], "from": r["chat_id"].split("@")[0], "incoming": r["incoming"], "reply": r["reply"]}
-        for r in db.pending()
-    ]}
+@router.get("/api/held", dependencies=AUTH)
+def list_held():
+    items = []
+    for r in db.pending():
+        name = contacts.name_for(r["chat_id"], r.get("number"))
+        items.append({
+            "id": r["id"], "name": name, "from": name or r["chat_id"].split("@")[0],
+            "incoming": r["incoming"], "reply": r["reply"], "reason": r.get("reason") or "",
+        })
+    return {"items": items}
 
 
-@router.post("/api/held/{item_id}/send")
-def send_held(item_id: int, body: SendRequest, x_dashboard_token: str = Header(default="")):
-    _check_token(x_dashboard_token)
+@router.post("/api/held/{item_id}/send", dependencies=AUTH)
+def send_held(item_id: int, body: SendRequest):
     item = db.get(item_id)
     if not item:
         raise HTTPException(404, "No such item.")
@@ -56,13 +60,13 @@ def send_held(item_id: int, body: SendRequest, x_dashboard_token: str = Header(d
 
     db.transition(item_id, "sending", "sent")
     db.log("held_sent", item["chat_id"])
+    log_event("held_sent")
     add_assistant_message(item["chat_id"], text)  # keep the conversation memory coherent
     return {"status": "sent"}
 
 
-@router.post("/api/held/{item_id}/dismiss")
-def dismiss_held(item_id: int, x_dashboard_token: str = Header(default="")):
-    _check_token(x_dashboard_token)
+@router.post("/api/held/{item_id}/dismiss", dependencies=AUTH)
+def dismiss_held(item_id: int):
     if not db.transition(item_id, "pending", "dismissed"):
         raise HTTPException(409, "Already handled.")
     db.log("held_dismissed", str(item_id))

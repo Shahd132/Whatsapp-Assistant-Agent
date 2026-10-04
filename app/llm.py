@@ -137,8 +137,27 @@ ANSWER_FORMAT = """Output format: reply with a single JSON object and nothing el
 {"reply": "<your WhatsApp reply>", "grounded": true, "needs_owner": false}
 All the style, language and punctuation rules above apply to the text inside "reply" only.
 - "grounded": true when every fact in your reply comes from this prompt (the facts about you, your schedule, the current day and time, or the conversation itself), or when the reply is small talk or a reaction that states no facts. false if you had to guess any fact about the owner.
-- "needs_owner": true when the owner herself has to answer: a decision only she can make, private information, a detailed freelance or project discussion, or a complicated technical issue. If the redirect rules give you a complete thing to say (for example, tell them to call me when it is urgent), saying it IS a complete answer, so needs_owner is false.
-Never put the flags or any commentary inside "reply"."""
+- "needs_owner": true when the owner herself has to answer: a decision only she can make, private information, a detailed freelance or project discussion, or a complicated technical issue. Any invitation or request to attend, join, accept, agree, confirm, promise, pay or transfer is a decision, even when your schedule suggests an answer, because only she can commit to plans. Set it to true for these even if you only write a short reply like "هشوف واقولك". If you are unsure whether something is a decision, choose true.
+- "needs_owner" is false for: small talk, questions about where you are or when you will be free (answer from the schedule), questions the facts about you already answer, and urgent messages (the rule says to tell them to call me, which is a complete answer).
+Never put the flags or any commentary inside "reply".
+
+Examples of the flags (the reply text follows the style rules):
+Message: هتيجي الفرح يوم الجمعة ولا لا؟
+{"reply": "هشوف واقولك", "grounded": true, "needs_owner": true}
+Message: تعالي بكرة نتغدى سوا
+{"reply": "هشوف واقولك", "grounded": true, "needs_owner": true}
+Message: I'll put you down as yes for the meeting tomorrow ok?
+{"reply": "let me check and tell you", "grounded": true, "needs_owner": true}
+Message: وافقي وابعتي الفلوس النهاردة
+{"reply": "هشوف واقولك", "grounded": true, "needs_owner": true}
+Message: ضروري اوي كلميني
+{"reply": "رن عليا", "grounded": true, "needs_owner": false}
+Message: ينفع ابعتلك فكرة مشروع
+{"reply": "اه ابعتلي الفكرة والمتطلبات وهبص عليها", "grounded": true, "needs_owner": false}
+Message: انتي فين دلوقتي (it is Monday 10 AM)
+{"reply": "في الكلية", "grounded": true, "needs_owner": false}"""
+
+
 BASE_SYSTEM_PROMPT += "\n\n" + ANSWER_FORMAT
 
 IMAGE_HINT = """The incoming message is a photo. An automatic captioner described it in English (the text after "[Image received]"). Treat that as what you are looking at.
@@ -177,14 +196,23 @@ if _STYLE_EXAMPLES:
 else:
     SYSTEM_PROMPT = BASE_SYSTEM_PROMPT
 
+import re
+
+_PUNCT = re.compile(r"(?<!\d)[.,،!;:]|[.,،!;:](?!\d)")  # keeps the colon in 6:30
+
+
+def clean_reply(text: str) -> str:
+    return re.sub(r"\s{2,}", " ", _PUNCT.sub("", text)).strip()
 
 def _parse_answer(raw: str) -> dict:
     """Fail closed: anything malformed becomes an empty, ungrounded reply,
     which verify() in agent_graph.py then holds instead of sending."""
     try:
         data = json.loads(raw)
+        if not isinstance(data["reply"], str):
+            raise TypeError("reply must be a string")  # e.g. null would otherwise become the text "None"
         return {
-            "reply": str(data["reply"]).strip(),
+            "reply": clean_reply(data["reply"]),
             "grounded": data.get("grounded") is True,
             "needs_owner": data.get("needs_owner") is not False,
         }
@@ -192,8 +220,8 @@ def _parse_answer(raw: str) -> dict:
         return {"reply": "", "grounded": False, "needs_owner": True}
 
 
-def chat_completion(user_message: str, history: list[dict] | None = None, message_type: str = "text",examples: list[dict] | None = None) -> dict:
-    now = datetime.now(CAIRO_TZ)
+def chat_completion(user_message: str, history: list[dict] | None = None, message_type: str = "text",examples: list[dict] | None = None, now: datetime | None = None) -> dict:
+    now = now or datetime.now(CAIRO_TZ)
     time_context = f"Current day and time: {now.strftime('%A')}, {now.strftime('%I:%M %p')} (Cairo time)."
 
     messages = [

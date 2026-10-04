@@ -1,0 +1,7 @@
+{"ts": 1790974888.189, "level": "info", "event": "auto_reply_toggled", "enabled": false}
+{"ts": 1790975163.285, "level": "info", "event": "verify", "chat": "305ea5d4", "type": "text", "grounded": true, "needs_owner": false, "action": "send", "reason": "", "chars_in": 3, "chars_out": 3}
+{"ts": 1790975163.328, "level": "info", "event": "held", "chat": "305ea5d4", "reason": "paused"}
+{"ts": 1790975172.443, "level": "info", "event": "auto_reply_toggled", "enabled": true}
+{"ts": 1790975194.634, "level": "info", "event": "held_sent"}
+{"ts": 1790975228.442, "level": "info", "event": "verify", "chat": "305ea5d4", "type": "text", "grounded": true, "needs_owner": false, "action": "send", "reason": "", "chars_in": 16, "chars_out": 57}
+{"ts": 1790975228.487, "level": "info", "event": "auto_reply", "chat": "305ea5d4"}

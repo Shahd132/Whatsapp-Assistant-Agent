@@ -3,6 +3,7 @@ from typing import TypedDict
 from langgraph.graph import END, StateGraph
 
 from app.llm import chat_completion
+from app.log import anon, log_event
 from app.memory import get_history
 from app.stt import transcribe_base64_audio
 from app.style_retrieval import retrieve_examples
@@ -20,6 +21,7 @@ class AgentState(TypedDict):
     grounded: bool                # every fact in the reply comes from the prompt
     needs_owner: bool             # only the owner can really answer this
     action: str                   # "send" | "hold"
+    hold_reason: str              # "" | "needs_owner" | "not_grounded" | "empty_reply"
 
 
 def classify_and_resolve(state: AgentState) -> AgentState:
@@ -47,7 +49,7 @@ def generate_reply(state: AgentState) -> AgentState:
         try:
             examples = retrieve_examples(state["resolved_text"])
         except Exception as err:  # style is a bonus: never let it block a reply
-            print(f"[style retrieval skipped] {err}")
+            log_event("style_retrieval_skipped", level="warning", error=str(err))
 
     result = chat_completion(
         state["resolved_text"],
@@ -62,12 +64,21 @@ def generate_reply(state: AgentState) -> AgentState:
 
 
 def verify(state: AgentState) -> AgentState:
-    ok = bool(state["reply_text"]) and state["grounded"] and not state["needs_owner"]
-    state["action"] = "send" if ok else "hold"
-    print(
-        f"[grounded={state['grounded']} needs_owner={state['needs_owner']}] "
-        f"-> {state['action']} | msg: {state['resolved_text']!r}"
-    )
+    if state["needs_owner"]:
+        reason = "needs_owner"
+    elif not state["grounded"]:
+        reason = "not_grounded"
+    elif not state["reply_text"]:
+        reason = "empty_reply"
+    else:
+        reason = ""
+    state["hold_reason"] = reason
+    state["action"] = "hold" if reason else "send"
+    # no message text in logs: only flags, sizes and an anonymised chat id
+    log_event("verify", chat=anon(state["contact_id"]), type=state["message_type"],
+              grounded=state["grounded"], needs_owner=state["needs_owner"],
+              action=state["action"], reason=reason, chars_in=len(state["resolved_text"]),
+              chars_out=len(state["reply_text"]))
     return state
 
 
@@ -106,5 +117,6 @@ def run_agent(contact_id: str, message_type: str, raw_text: str, media_base64: s
         "grounded": False,
         "needs_owner": True,
         "action": "hold",
+        "hold_reason": "",
     }
     return _compiled_graph.invoke(initial_state)
