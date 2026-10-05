@@ -5,6 +5,8 @@ import tempfile
 
 from faster_whisper import WhisperModel
 
+from app.lang import pick_language
+
 _models: dict[str, WhisperModel] = {}
 
 
@@ -26,7 +28,13 @@ def transcribe_bytes(audio: bytes, language: str = "ar", model_size: str | None 
         path = f.name
 
     try:
-        segments, _ = _get_model(model_size).transcribe(path, language=language, vad_filter=vad)
+        model = _get_model(model_size)
+        # "auto": let Whisper listen first, then keep it to Arabic or English
+        segments, info = model.transcribe(path, language=None if language == "auto" else language, vad_filter=vad)
+        if language == "auto":
+            chosen = pick_language(info)
+            if chosen != info.language:
+                segments, info = model.transcribe(path, language=chosen, vad_filter=vad)
         return " ".join(seg.text.strip() for seg in segments).strip()
     finally:
         try:

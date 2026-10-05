@@ -46,3 +46,30 @@ def test_old_database_is_migrated(tmp_path, monkeypatch):
     monkeypatch.setattr(db, "DB_PATH", path)
     db.init()
     assert db.get(db.add_held("1@c.us", "a", "b", reason="x"))["reason"] == "x"
+
+
+def test_message_log_filters_and_order(fresh_db):
+    fresh_db.log_message("1@c.us", "Mom", "in", "هتيجي؟", "replied")
+    fresh_db.log_message("1@c.us", "Mom", "out", "ايوة", "auto")
+    fresh_db.log_message("2@c.us", "Dad", "in", "hi", "held")
+    assert [m["body"] for m in fresh_db.query_messages()] == ["hi", "ايوة", "هتيجي؟"]          # newest first
+    assert [m["body"] for m in fresh_db.query_messages(name="mom")] == ["ايوة", "هتيجي؟"]      # case-insensitive
+    assert [m["body"] for m in fresh_db.query_messages(direction="in", name="Mom")] == ["هتيجي؟"]
+    assert fresh_db.query_messages(since=9_999_999_999) == []
+
+
+def test_message_log_time_window_and_purge(fresh_db):
+    import time
+    fresh_db.log_message("1@c.us", "Mom", "in", "old", "replied")
+    with fresh_db._db() as c:
+        c.execute("UPDATE message_log SET ts = ?", (time.time() - 40 * 86400,))
+    fresh_db.log_message("1@c.us", "Mom", "in", "new", "replied")
+    assert [m["body"] for m in fresh_db.query_messages(since=time.time() - 86400)] == ["new"]
+    assert fresh_db.purge_messages(days=30) == 1
+    assert [m["body"] for m in fresh_db.query_messages()] == ["new"]
+
+
+def test_direct_send_defaults_to_on(fresh_db):
+    assert fresh_db.direct_send_enabled() is True
+    fresh_db.set_setting("direct_send", "0")
+    assert fresh_db.direct_send_enabled() is False

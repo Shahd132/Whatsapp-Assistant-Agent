@@ -25,8 +25,10 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
 from app import contacts as contacts_store
+from app import db
 from app.log import log_event
 from app.stt import transcribe_bytes
+from app.tts import synthesize_bytes
 
 router = APIRouter()
 
@@ -178,6 +180,8 @@ async def _send(kind: str, path: str, payload: dict, cooldown: float) -> dict:
         raise HTTPException(502, f"The bridge could not send it ({r.status_code}): {r.text[:120]}")
 
     _last_send[kind] = time.time()
+    if kind == "text":
+        db.log_message("", contacts_store.canonical(payload["contact"]) or payload["contact"], "out", payload["text"], "dashboard")
     log_event("dashboard_send", kind=kind)  # no message text, name or coordinates in logs
     return {"status": "sent"}
 
@@ -206,11 +210,11 @@ async def send_location(body: LocationRequest):
 
 
 @router.post("/api/transcribe", dependencies=[Depends(require_auth)])
-async def transcribe(request: Request, lang: str = "ar"):
+async def transcribe(request: Request, lang: str = "auto"):
     """Raw audio bytes in the body (whatever the browser's MediaRecorder made).
     Returns text only: the page puts it in the input box and nothing is sent."""
-    if lang not in ("ar", "en"):
-        raise HTTPException(400, "Language must be ar or en.")
+    if lang not in ("auto", "ar", "en"):
+        raise HTTPException(400, "Language must be auto, ar or en.")
     try:
         declared = int(request.headers.get("content-length", "0"))
     except ValueError:
@@ -233,3 +237,18 @@ async def transcribe(request: Request, lang: str = "ar"):
         log_event("transcribe_failed", level="error", error=type(err).__name__)
         raise HTTPException(422, "Couldn't read that recording. Try again.")
     return {"text": text}
+
+
+class SpeakRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=2000)
+
+
+@router.post("/api/speak", dependencies=[Depends(require_auth)])
+async def speak(body: SpeakRequest):
+    """Text in, MP3 out. Only the assistant's own replies are sent here, never contact messages."""
+    try:
+        audio = await synthesize_bytes(body.text)
+    except Exception as err:
+        log_event("speak_failed", level="error", error=type(err).__name__)
+        raise HTTPException(502, "Couldn't make the voice. Is the internet connected?")
+    return Response(content=audio, media_type="audio/mpeg")

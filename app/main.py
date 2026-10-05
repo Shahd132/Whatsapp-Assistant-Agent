@@ -95,11 +95,14 @@ async def webhook(msg: IncomingMessage, x_bridge_token: str = Header(default="")
     if action == "hold":
         db.add_held(msg.from_, result["resolved_text"], result["reply_text"], reason=reason, number=msg.number)
         db.log("held", msg.from_)
+        db.log_message(msg.from_, name, "in", result["resolved_text"], "held")
         log_event("held", chat=anon(msg.from_), reason=reason)
         return {"action": "hold", "reply_text": result["reply_text"], "reason": reason}
 
     add_assistant_message(msg.from_, result["reply_text"])
     db.log("auto_reply", msg.from_)
+    db.log_message(msg.from_, name, "in", result["resolved_text"], "replied")
+    db.log_message(msg.from_, name, "out", result["reply_text"], "auto")
     log_event("auto_reply", chat=anon(msg.from_))
     response = {"action": "send", "reply_text": result["reply_text"], "reply_audio_base64": None}
 

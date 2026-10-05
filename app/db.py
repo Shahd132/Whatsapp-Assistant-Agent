@@ -1,11 +1,13 @@
 """SQLite store (data/assistant.db): held replies, audit log, conversation
 memory, per-contact modes and settings."""
+import os
 import sqlite3
 import time
 from contextlib import contextmanager
 from pathlib import Path
 
 DB_PATH = Path(__file__).resolve().parent.parent / "data" / "assistant.db"
+_last_purge = 0.0
 
 
 @contextmanager
@@ -40,6 +42,11 @@ def init() -> None:
         c.execute("CREATE INDEX IF NOT EXISTS idx_messages_chat ON messages (chat_id, id)")
         c.execute("CREATE TABLE IF NOT EXISTS contact_modes (name TEXT PRIMARY KEY, mode TEXT NOT NULL)")
         c.execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+        c.execute("""CREATE TABLE IF NOT EXISTS message_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, ts REAL, chat_id TEXT, name TEXT,
+            direction TEXT, body TEXT, outcome TEXT)""")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_message_log_ts ON message_log (ts)")
+    purge_messages()
 
 
 # ---- held replies ----
@@ -153,3 +160,58 @@ def set_setting(key: str, value: str) -> None:
 
 def auto_reply_enabled() -> bool:
     return get_setting("auto_reply", "1") == "1"
+
+
+def direct_send_enabled() -> bool:
+    """When on, "send X to Mom" in the dashboard goes out without a confirmation card."""
+    return get_setting("direct_send", "1") == "1"
+
+
+# ---- message log: what people sent you and what went out (for "show me today's messages") ----
+# Only chats the assistant handled are here. Stored on disk, so it is purged after
+# MESSAGE_RETENTION_DAYS (default 30).
+
+def retention_days() -> int:
+    try:
+        return max(1, int(os.getenv("MESSAGE_RETENTION_DAYS", "30")))
+    except ValueError:
+        return 30
+
+
+def log_message(chat_id: str, name: str | None, direction: str, body: str, outcome: str = "") -> None:
+    """direction: "in" (they wrote to you) or "out" (a message that was sent as you)."""
+    with _db() as c:
+        c.execute("INSERT INTO message_log (ts, chat_id, name, direction, body, outcome) VALUES (?, ?, ?, ?, ?, ?)",
+                  (time.time(), chat_id or "", name or "", direction, body, outcome))
+    if time.time() - _last_purge > 86400:
+        purge_messages()
+
+
+def purge_messages(days: int | None = None) -> int:
+    global _last_purge
+    cutoff = time.time() - (days or retention_days()) * 86400
+    with _db() as c:
+        deleted = c.execute("DELETE FROM message_log WHERE ts < ?", (cutoff,)).rowcount
+    _last_purge = time.time()
+    return deleted
+
+
+def query_messages(name: str | None = None, since: float | None = None, until: float | None = None,
+                   direction: str | None = None, limit: int = 100) -> list[dict]:
+    sql, params = "SELECT ts, chat_id, name, direction, body, outcome FROM message_log WHERE 1=1", []
+    if name:
+        sql += " AND LOWER(name) = LOWER(?)"
+        params.append(name)
+    if since is not None:
+        sql += " AND ts >= ?"
+        params.append(since)
+    if until is not None:
+        sql += " AND ts < ?"
+        params.append(until)
+    if direction in ("in", "out"):
+        sql += " AND direction = ?"
+        params.append(direction)
+    sql += " ORDER BY id DESC LIMIT ?"
+    params.append(max(1, min(limit, 500)))
+    with _db() as c:
+        return [dict(r) for r in c.execute(sql, params)]

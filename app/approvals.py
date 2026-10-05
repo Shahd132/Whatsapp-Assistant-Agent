@@ -60,6 +60,7 @@ def send_held(item_id: int, body: SendRequest):
 
     db.transition(item_id, "sending", "sent")
     db.log("held_sent", item["chat_id"])
+    db.log_message(item["chat_id"], contacts.name_for(item["chat_id"], item.get("number")), "out", text, "held_sent")
     log_event("held_sent")
     add_assistant_message(item["chat_id"], text)  # keep the conversation memory coherent
     return {"status": "sent"}

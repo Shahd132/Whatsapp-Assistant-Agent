@@ -40,3 +40,8 @@ def name_for(chat_id: str, number: str | None = None) -> str | None:
             if _same_number(d, _digits(base)) or _same_number(d, _digits(number or "")):
                 return name
     return None
+
+
+def canonical(name: str) -> str | None:
+    """Match a name case-insensitively and return it exactly as written in contacts.json."""
+    return {n.strip().lower(): n for n in names()}.get((name or "").strip().lower())

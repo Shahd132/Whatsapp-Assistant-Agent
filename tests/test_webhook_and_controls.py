@@ -74,3 +74,25 @@ def test_activity_feed_resolves_names(signed_in, agent):
     signed_in.post("/webhook", json=msg(), headers=HEADERS)
     first = signed_in.get("/api/audit").json()["items"][0]
     assert first["kind"] == "auto_reply" and first["name"] == "Mom"
+
+
+def test_messages_endpoint_lists_both_directions(signed_in, agent):
+    signed_in.post("/webhook", json=msg(body="هتيجي؟"), headers=HEADERS)
+    items = signed_in.get("/api/messages?range=today").json()["items"]
+    assert [(m["direction"], m["name"]) for m in items] == [("out", "Mom"), ("in", "Mom")]
+    assert signed_in.get("/api/messages?contact=mom&direction=received").json()["items"][0]["body"] == "هتيجي؟"
+    assert signed_in.get("/api/messages?contact=Nobody").status_code == 400
+    assert signed_in.get("/api/messages?range=forever").status_code == 422
+
+
+def test_held_messages_are_logged_as_incoming_only(signed_in, agent):
+    agent.update(action="hold", hold_reason="needs_owner")
+    signed_in.post("/webhook", json=msg(), headers=HEADERS)
+    items = signed_in.get("/api/messages").json()["items"]
+    assert [m["direction"] for m in items] == ["in"] and items[0]["outcome"] == "held"
+
+
+def test_direct_send_switch(signed_in):
+    assert signed_in.get("/api/status").json()["direct_send"] is True
+    assert signed_in.post("/api/direct-send", json={"enabled": False}).json()["direct_send"] is False
+    assert signed_in.post("/api/direct-send", json={"enabled": True}).json()["direct_send"] is True

@@ -5,67 +5,174 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>WhatsApp Assistant</title>
 <style>
-  :root{--bg:#eef1f4;--card:#fff;--ink:#14202b;--mute:#58697a;--go:#0b6e4f;--on-go:#fff;--bad:#b42318;--line:#d3dae1;--me:#dff3ea}
+  :root{--bg:#f3f4fb;--card:#fff;--card2:#f6f7fd;--ink:#171a2b;--mute:#6a6f8a;--line:#e2e5f3;
+        --a1:#6366f1;--a2:#8b5cf6;--a3:#ec4899;--a4:#14b8a6;--a5:#f59e0b;--ok:#15935f;--bad:#e11d48;
+        --grad:linear-gradient(135deg,var(--a1),var(--a2) 55%,var(--a3));--shadow:0 14px 34px rgba(60,64,120,.10)}
   @media (prefers-color-scheme:dark){
-    :root{--bg:#0f161c;--card:#18222b;--ink:#e8eef3;--mute:#9aaab7;--go:#3fb68b;--on-go:#06281d;--bad:#ff8a7e;--line:#2b3946;--me:#1d3a31}
+    :root{--bg:#0b0c16;--card:#141627;--card2:#1a1d33;--ink:#eceefb;--mute:#9a9fc0;--line:#2a2e4d;
+          --a1:#818cf8;--a2:#a78bfa;--a3:#f472b6;--a4:#2dd4bf;--a5:#fbbf24;--ok:#34d399;--bad:#fb7185;--shadow:0 14px 34px rgba(0,0,0,.45)}
   }
   *{box-sizing:border-box}
   [hidden]{display:none !important}
-  body{margin:0;height:100vh;height:100dvh;display:flex;justify-content:center;background:var(--bg);color:var(--ink);
-       font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
-  main{width:100%;max-width:560px;height:100%;display:flex;flex-direction:column;padding:16px}
-  header{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
-  h1{margin:0 auto 0 0;font-size:1.15rem}
-  input{padding:10px 12px;font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px}
-  #log{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:14px;
-       background:var(--card);border:1px solid var(--line);border-radius:16px}
-  .msg{max-width:88%;padding:10px 14px;border:1px solid var(--line);border-radius:14px;white-space:pre-wrap}
-  .me{align-self:flex-end;background:var(--me)}
-  .bot{align-self:flex-start}
-  .draft{margin-top:10px;padding:10px;background:var(--bg);border-radius:10px}
-  .row{display:flex;gap:8px;margin-top:10px}
-  button{padding:10px 16px;font:600 .95rem system-ui,sans-serif;border-radius:10px;cursor:pointer}
-  .go{border:0;background:var(--go);color:var(--on-go)}
-  .ghost{border:1px solid var(--line);background:transparent;color:var(--ink)}
-  .rec{border:1px solid var(--bad);color:var(--bad);background:transparent}
+  body{margin:0;height:100vh;height:100dvh;display:flex;justify-content:center;color:var(--ink);
+       font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+       background:radial-gradient(800px 420px at 95% -8%,color-mix(in srgb,var(--a2) 22%,transparent),transparent),
+                  radial-gradient(700px 420px at -8% 4%,color-mix(in srgb,var(--a4) 16%,transparent),transparent),
+                  radial-gradient(700px 400px at 50% 112%,color-mix(in srgb,var(--a3) 14%,transparent),transparent),var(--bg)}
+  #app{width:100%;max-width:780px;height:100%;display:flex;flex-direction:column;gap:12px;padding:14px}
+  button,input,select{font:inherit;color:var(--ink)}
+  input,select{padding:11px 14px;background:var(--card);border:1px solid var(--line);border-radius:13px}
+  button{cursor:pointer}
   button:disabled{opacity:.55;cursor:wait}
-  button:focus-visible,input:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
-  #composer{display:flex;gap:8px;margin-top:12px}
-  #text{flex:1;min-width:0}
-  #lang{padding:10px 12px}
+  button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--a1);outline-offset:2px}
+
+  /* top bar */
+  .top{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;justify-content:space-between}
+  .brand{display:flex;gap:12px;align-items:center}
+  .logo{width:46px;height:46px;border-radius:15px;display:grid;place-items:center;color:#fff;background:var(--grad);
+        box-shadow:0 10px 24px color-mix(in srgb,var(--a2) 45%,transparent)}
+  h1{margin:0;font-size:1.18rem;line-height:1.2;font-weight:800;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .brand small{color:var(--mute)}
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .chip{display:inline-flex;align-items:center;gap:8px;padding:7px 13px;border-radius:999px;font-size:.84rem;font-weight:700;
+        background:var(--card);border:1px solid var(--line);color:var(--mute)}
+  .chip::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+  .chip.on{color:var(--ok);background:color-mix(in srgb,var(--ok) 11%,var(--card));border-color:color-mix(in srgb,var(--ok) 35%,var(--line))}
+  .chip.warn{color:var(--bad);background:color-mix(in srgb,var(--bad) 10%,var(--card));border-color:color-mix(in srgb,var(--bad) 40%,var(--line))}
+  .chip.plain::before{display:none}
+
+  /* tabs */
+  .tabs{display:flex;gap:6px;padding:6px;background:var(--card);border:1px solid var(--line);border-radius:18px;overflow-x:auto;box-shadow:var(--shadow)}
+  .tabs button{--c:var(--a1);flex:1;display:flex;gap:7px;align-items:center;justify-content:center;white-space:nowrap;padding:9px 12px;
+               border:0;border-radius:13px;background:transparent;color:var(--mute);font-weight:700}
+  .tabs button svg{color:var(--c)}
+  .tabs button[aria-selected="true"]{color:#fff;background:linear-gradient(135deg,var(--c),color-mix(in srgb,var(--c) 65%,var(--a3)));
+               box-shadow:0 6px 16px color-mix(in srgb,var(--c) 40%,transparent)}
+  .tabs button[aria-selected="true"] svg{color:#fff}
+  #tab-held{--c:var(--a5)} #tab-messages{--c:var(--a4)} #tab-activity{--c:var(--a2)} #tab-people{--c:var(--a3)}
+  .badge{padding:1px 7px;border-radius:999px;background:linear-gradient(135deg,var(--a5),var(--bad));color:#fff;font-size:.75rem}
+  @media (max-width:560px){.tabs .lbl{display:none}.tabs [aria-selected="true"] .lbl{display:inline}}
+
+  /* views */
+  .view{flex:1;min-height:0;display:flex;flex-direction:column;gap:12px}
+  .panel{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:14px;
+         background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow)}
+  .note{margin:0;color:var(--mute)}
+  .filters{display:flex;gap:8px;flex-wrap:wrap} .filters select{flex:1;min-width:120px}
+
+  /* chat */
+  .msg{max-width:88%;padding:11px 15px;border:1px solid var(--line);border-radius:20px;white-space:pre-wrap;animation:rise .25s ease}
+  .me{align-self:flex-end;background:var(--grad);color:#fff;border:0;border-end-end-radius:6px;box-shadow:0 8px 20px color-mix(in srgb,var(--a2) 32%,transparent)}
+  .bot{align-self:flex-start;background:var(--card2);border-end-start-radius:6px}
   .err{color:var(--bad)}
-  #held,#activity,#people{margin-bottom:12px;max-height:40vh;overflow-y:auto}
-  #activity p,#people p{margin:0;color:var(--mute)}
-  #activity .draft,#people .draft{margin:0 0 8px;border:1px solid var(--line)}
+  .typing{display:flex;gap:5px;padding:14px}
+  .typing i{width:7px;height:7px;border-radius:50%;background:var(--a2);animation:blink 1s infinite}
+  .typing i:nth-child(2){animation-delay:.15s;background:var(--a3)} .typing i:nth-child(3){animation-delay:.3s;background:var(--a4)}
+  .empty{margin:auto;text-align:center;max-width:400px}
+  .hero{width:68px;height:68px;margin:0 auto 12px;border-radius:22px;display:grid;place-items:center;color:#fff;background:var(--grad);
+        box-shadow:0 14px 30px color-mix(in srgb,var(--a2) 40%,transparent)}
+  .empty h2{margin:0 0 4px;font-size:1.3rem} .empty p{margin:0 0 14px;color:var(--mute)}
+  .suggest{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+  .suggest button{--c:var(--a1);padding:8px 14px;border-radius:999px;font-weight:600;color:var(--c);
+        border:1px solid color-mix(in srgb,var(--c) 40%,var(--line));background:color-mix(in srgb,var(--c) 8%,var(--card))}
+  .suggest button:nth-child(2){--c:var(--a4)} .suggest button:nth-child(3){--c:var(--a3)}
+  .suggest button:hover{background:color-mix(in srgb,var(--c) 16%,var(--card))}
+  @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  @keyframes blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--bad) 55%,transparent)}100%{box-shadow:0 0 0 12px transparent}}
+
+  /* cards and lists */
+  .draft{margin-top:10px;padding:12px;background:var(--card);border:1px solid var(--line);border-radius:16px}
+  .panel .draft{margin:0;border-inline-start:4px solid var(--a1)}
+  #heldList .draft{border-inline-start-color:var(--a5)}
+  #peopleList .draft{border-inline-start-color:var(--a3)}
+  [data-kind="auto_reply"]{border-inline-start-color:var(--a4) !important}
+  [data-kind="held"]{border-inline-start-color:var(--a5) !important}
+  [data-kind="held_sent"]{border-inline-start-color:var(--a1) !important}
+  [data-kind="held_dismissed"]{border-inline-start-color:var(--mute) !important}
+  [data-kind$="_toggled"],[data-kind="mode_changed"]{border-inline-start-color:var(--a2) !important}
+  .row{display:flex;gap:8px;margin-top:10px}
+  .go{border:0;background:var(--grad);color:#fff;padding:10px 20px;border-radius:13px;font-weight:700;box-shadow:0 8px 18px color-mix(in srgb,var(--a2) 32%,transparent)}
+  .ghost{border:1px solid var(--line);background:transparent;padding:10px 16px;border-radius:13px;font-weight:600}
+  .from{color:var(--mute);font-size:.88rem;white-space:pre-wrap}
+  .who{font-weight:800;color:hsl(var(--h,220) 62% 42%)}
+  @media (prefers-color-scheme:dark){.who{color:hsl(var(--h,220) 85% 74%)}}
+  textarea{width:100%;margin-top:8px;padding:10px;font:inherit;color:var(--ink);background:var(--card2);border:1px solid var(--line);border-radius:13px;resize:vertical}
+  .hhead{display:flex;gap:10px;align-items:flex-start}
   .person{display:flex;gap:8px;align-items:center;justify-content:space-between}
-  select{padding:10px 12px;font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px}
-  select:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
-  #held p{margin:0;color:var(--mute)}
-  #held .draft{margin:0 0 8px;border:1px solid var(--line)}
-  .from{color:var(--mute);font-size:.9rem;white-space:pre-wrap}
-  textarea{width:100%;margin-top:8px;padding:10px;font:inherit;color:var(--ink);background:var(--card);
-           border:1px solid var(--line);border-radius:10px;resize:vertical}
+  .person .hhead{align-items:center}
+  .avatar{--h:220;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;flex:none;color:#fff;font-weight:800;
+          background:linear-gradient(135deg,hsl(var(--h) 75% 58%),hsl(calc(var(--h) + 45) 78% 50%))}
+  .mlist{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+  .panel .mlist{margin:0}
+  .mrow{--h:220;display:flex;gap:10px;padding:10px 12px;border-radius:16px;background:var(--card2);border:1px solid var(--line);
+        border-inline-start:4px solid hsl(var(--h) 70% 58%);white-space:pre-wrap}
+  .mrow.out{background:color-mix(in srgb,var(--a1) 10%,var(--card))}
+  .mbody{min-width:0;flex:1}
+  .mrow .from{margin-bottom:2px}
+  .listen{display:block;margin-top:6px;padding:3px 12px;font-size:.8rem;font-weight:600;border-radius:999px;color:var(--a1);
+          border:1px solid color-mix(in srgb,var(--a1) 40%,var(--line));background:transparent}
+
+  /* composer */
+  #composer{display:flex;gap:8px;align-items:center;padding:8px;background:var(--card);border:1px solid var(--line);border-radius:999px;
+            box-shadow:var(--shadow);transition:box-shadow .2s,border-color .2s}
+  #composer:focus-within{border-color:var(--a1);box-shadow:0 0 0 4px color-mix(in srgb,var(--a1) 18%,transparent),var(--shadow)}
+  #text{flex:1;min-width:0;border:0;background:transparent;padding:10px 12px}
+  #text:focus-visible{outline:none}
+  .round{width:44px;height:44px;padding:0;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);background:var(--card2)}
+  .round.go{border:0;background:var(--grad);color:#fff}
+  #mic{color:var(--a4);border-color:color-mix(in srgb,var(--a4) 45%,var(--line));background:color-mix(in srgb,var(--a4) 10%,var(--card))}
+  #mic.rec{color:#fff;background:var(--bad);border:0;animation:pulse 1.2s infinite}
+  #lang{padding:8px 11px;border-radius:999px;font-size:.78rem;font-weight:800;color:var(--a2);background:transparent;
+        border:1px solid color-mix(in srgb,var(--a2) 45%,var(--line))}
+
+  /* the orb: shown while you talk to the assistant */
+  .orb-wrap{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;text-align:center;
+            background:color-mix(in srgb,var(--bg) 76%,transparent);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+            opacity:0;visibility:hidden;pointer-events:none;transition:opacity .3s,visibility .3s}
+  .orb-wrap.on{opacity:1;visibility:visible;pointer-events:auto}
+  .orb-stage{position:relative;width:min(58vw,240px);aspect-ratio:1;animation:breathe 3.2s ease-in-out infinite}
+  .orb-stage::before,.orb-stage::after{content:"";position:absolute;inset:0;border-radius:50%;border:2px solid color-mix(in srgb,var(--a2) 55%,transparent);opacity:0}
+  [data-state="listening"] .orb-stage::before{animation:ring 2.2s ease-out infinite}
+  [data-state="listening"] .orb-stage::after{animation:ring 2.2s ease-out 1.1s infinite}
+  [data-state="speaking"] .orb-stage::before{animation:ring 1.6s ease-out infinite;border-color:color-mix(in srgb,var(--a3) 55%,transparent)}
+  .orb{position:absolute;inset:0;border-radius:50%;overflow:hidden;transform:scale(calc(1 + var(--lvl,0) * .24));transition:transform .09s linear;
+       background:radial-gradient(120% 90% at 50% 6%,color-mix(in srgb,var(--a1) 92%,#fff) 0%,color-mix(in srgb,var(--a2) 68%,#fff) 40%,transparent 72%),
+                  radial-gradient(90% 70% at 50% 104%,color-mix(in srgb,var(--a4) 55%,#fff) 0%,transparent 70%),
+                  linear-gradient(180deg,color-mix(in srgb,var(--a2) 55%,#fff) 0%,#f4f1ff 58%,color-mix(in srgb,var(--a3) 28%,#fff) 100%);
+       box-shadow:0 0 60px 8px color-mix(in srgb,var(--a2) 48%,transparent),0 0 150px 30px color-mix(in srgb,var(--a3) 24%,transparent),
+                  inset 0 -20px 44px color-mix(in srgb,var(--a3) 32%,transparent)}
+  .orb::before{content:"";position:absolute;inset:-28%;background:conic-gradient(from 0deg,var(--a1),var(--a3),var(--a4),var(--a2),var(--a1));
+               filter:blur(40px);opacity:.5;mix-blend-mode:soft-light;animation:spin 8s linear infinite}
+  .orb::after{content:"";position:absolute;left:13%;top:5%;width:74%;height:42%;border-radius:50%;filter:blur(7px);
+              background:radial-gradient(ellipse at 50% 30%,rgba(255,255,255,.8),transparent 72%)}
+  [data-state="thinking"] .orb::before{animation-duration:2.2s;opacity:.7}
+  .orb-label{font-size:1.2rem;font-weight:800;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .orb-caption{max-width:520px;min-height:3em;color:var(--mute);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  @keyframes ring{0%{transform:scale(1);opacity:.7}100%{transform:scale(1.7);opacity:0}}
+  @keyframes breathe{50%{transform:scale(1.04)}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
   /* login */
-  #gate{width:100%;max-width:560px;padding:16px;margin:auto}
-  #gate form{display:flex;flex-direction:column;gap:12px;padding:20px;background:var(--card);
-             border:1px solid var(--line);border-radius:16px}
-  #gate h1{margin:0}
-  #gate p{margin:0;color:var(--mute)}
-  #loginErr{min-height:1.5em;margin:0}
-  .pw{display:flex;gap:8px}
-  .pw input{flex:1;min-width:0}
-  .keep{display:flex;gap:8px;align-items:center;color:var(--mute);font-size:.95rem}
-  .keep input{width:auto}
+  #gate{width:100%;max-width:420px;padding:16px;margin:auto}
+  #gate form{position:relative;overflow:hidden;display:flex;flex-direction:column;gap:12px;padding:30px 26px 26px;background:var(--card);
+             border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow)}
+  #gate form::before{content:"";position:absolute;inset:0 0 auto 0;height:5px;background:var(--grad)}
+  #gate .logo{margin-bottom:4px} #gate p{margin:0;color:var(--mute)} #loginErr{min-height:1.5em}
+  .pw{display:flex;gap:8px} .pw input{flex:1;min-width:0}
+  .keep{display:flex;gap:8px;align-items:center;color:var(--mute);font-size:.95rem} .keep input{width:auto}
+
+  @media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
 </style>
 </head>
 <body>
 <section id="gate" hidden>
   <form id="login">
+    <div class="logo" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.7 7L4 20l1.1-4.8A8 8 0 1 1 21 12z"/></svg></div>
     <h1>WhatsApp Assistant</h1>
     <p>Sign in to manage your assistant.</p>
     <div class="pw">
-      <input id="password" type="password" name="password" placeholder="Password" aria-label="Password"
-             autocomplete="current-password" required>
+      <input id="password" type="password" name="password" placeholder="Password" aria-label="Password" autocomplete="current-password" required>
       <button id="showPw" class="ghost" type="button" aria-pressed="false">Show</button>
     </div>
     <label class="keep"><input id="remember" type="checkbox" checked> Keep me signed in on this device</label>
@@ -75,35 +182,99 @@
 </section>
 
 <main id="app" hidden>
-  <header>
-    <h1>WhatsApp Assistant</h1>
-    <button id="autoBtn" class="ghost" type="button" aria-pressed="true">Auto-reply: On</button>
-    <button id="heldBtn" class="ghost" type="button">Held</button>
-    <button id="activityBtn" class="ghost" type="button">Activity</button>
-    <button id="peopleBtn" class="ghost" type="button">Contacts</button>
-    <button id="lockBtn" class="ghost" type="button">Sign out</button>
+  <header class="top">
+    <div class="brand">
+      <div class="logo" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.7 7L4 20l1.1-4.8A8 8 0 1 1 21 12z"/></svg></div>
+      <div><h1>WhatsApp Assistant</h1><small>Your replies, under your control</small></div>
+    </div>
+    <div class="chips">
+      <button id="autoBtn" class="chip on" type="button" aria-pressed="true" title="When paused, every reply waits for your approval">Auto-reply: On</button>
+      <button id="directBtn" class="chip on" type="button" aria-pressed="true" title="When on, messages you tell me to send go out immediately">Direct send: On</button>
+      <button id="wakeBtn" class="chip off" type="button" aria-pressed="false" title="Say the name to talk hands-free. Uses the browser's speech service (Chrome or Edge) while this page is open.">Say Mika: Off</button>
+      <button id="voiceBtn" class="chip on" type="button" aria-pressed="true" title="When on, what you dictate is sent right away and I answer out loud">Voice chat: On</button>
+      <button id="lockBtn" class="chip plain" type="button">Sign out</button>
+    </div>
   </header>
 
-  <section id="held" hidden></section>
-  <section id="activity" hidden></section>
-  <section id="people" hidden></section>
-  <div id="log" aria-live="polite"></div>
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button id="tab-chat" data-tab="chat" role="tab" aria-selected="true"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.7 7L4 20l1.1-4.8A8 8 0 1 1 21 12z"/></svg><span class="lbl">Chat</span></button>
+    <button id="tab-held" data-tab="held" role="tab" aria-selected="false"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span class="lbl">Held</span><span id="heldCount" class="badge" hidden></span></button>
+    <button id="tab-messages" data-tab="messages" role="tab" aria-selected="false"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg><span class="lbl">Messages</span></button>
+    <button id="tab-activity" data-tab="activity" role="tab" aria-selected="false"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg><span class="lbl">Activity</span></button>
+    <button id="tab-people" data-tab="people" role="tab" aria-selected="false"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/></svg><span class="lbl">Contacts</span></button>
+  </nav>
 
-  <form id="composer">
-    <input id="text" dir="auto" placeholder="e.g. tell mom I'll be late" aria-label="Instruction" autocomplete="off">
-    <button id="lang" class="ghost" type="button" aria-label="Dictation language: Arabic" title="Dictation language">AR</button>
-    <button id="mic" class="ghost" type="button">Dictate</button>
-    <button class="go" type="submit">Ask</button>
-  </form>
+  <section id="view-chat" class="view">
+    <div id="log" class="panel" aria-live="polite">
+      <div id="empty" class="empty">
+        <div class="hero" aria-hidden="true"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.6L18.5 9l-4.7 1.4L12 15l-1.8-4.6L5.5 9l4.7-1.4z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg></div>
+        <h2>What can I do for you?</h2>
+        <p>Ask me to send something, or to read your messages out loud.</p>
+        <div id="suggest" class="suggest"></div>
+      </div>
+    </div>
+    <form id="composer">
+      <input id="text" dir="auto" placeholder="Message your assistant…" aria-label="Instruction" autocomplete="off">
+      <button id="lang" type="button" aria-label="Dictation language: automatic" title="Dictation language: AUTO hears Arabic or English">AUTO</button>
+      <button id="mic" class="round" type="button" aria-label="Dictate" title="Dictate"></button>
+      <button id="send" class="round go" type="submit" aria-label="Send to assistant" title="Ask">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </button>
+    </form>
+  </section>
+
+  <section id="view-held" class="view" hidden><div id="heldList" class="panel"></div></section>
+
+  <section id="view-messages" class="view" hidden>
+    <div class="filters">
+      <select id="fContact" aria-label="Contact"></select>
+      <select id="fRange" aria-label="Time range">
+        <option value="today">Today</option><option value="yesterday">Yesterday</option>
+        <option value="last_7_days">Last 7 days</option><option value="all">Everything stored</option>
+      </select>
+      <select id="fDir" aria-label="Direction">
+        <option value="both">Sent and received</option><option value="received">Received</option><option value="sent">Sent by me</option>
+      </select>
+    </div>
+    <div id="messagesList" class="panel"></div>
+  </section>
+
+  <section id="view-activity" class="view" hidden><div id="activityList" class="panel"></div></section>
+  <section id="view-people" class="view" hidden><div id="peopleList" class="panel"></div></section>
+  <audio id="voice" hidden></audio>
 </main>
+
+<div id="orbWrap" class="orb-wrap" data-state="off" aria-live="polite">
+  <div class="orb-stage"><div id="orb" class="orb"></div></div>
+  <div id="orbLabel" class="orb-label"></div>
+  <div id="orbCaption" class="orb-caption" dir="auto"></div>
+  <button id="orbClose" class="ghost" type="button">Close</button>
+</div>
 
 <script>
   const $ = (id) => document.getElementById(id);
   const app = $("app"), gate = $("gate"), log = $("log"), box = $("text");
   const history = [];
+  let contactNames = [], autoOn = true, directOn = true;
+
+  const el = (tag, cls, text) => {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  };
+  const hueOf = (name) => [...String(name || "?")].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
+  function avatar(name) {
+    const a = el("div", "avatar", (String(name || "?").trim()[0] || "?").toUpperCase());
+    a.style.setProperty("--h", hueOf(name));
+    return a;
+  }
+  const note = (text) => el("p", "note", text);
+  const btn = (label, cls) => Object.assign(el("button", cls, label), { type: "button" });
 
   // ---- auth: the server sets an HttpOnly cookie; this page never sees the password ----
   function showGate() {
+    stopWake();
     app.hidden = true;
     gate.hidden = false;
     $("password").value = "";
@@ -115,7 +286,9 @@
     gate.hidden = true;
     app.hidden = false;
     loadStatus();
-    refreshHeld(true);
+    loadContacts();
+    refreshHeld();
+    startWake();
   }
 
   async function api(path, body) {
@@ -160,22 +333,325 @@
 
   $("lockBtn").onclick = async () => {
     await fetch("/api/logout", { method: "POST" }).catch(() => {});
-    log.replaceChildren();
+    log.replaceChildren($("empty"));
+    $("empty").hidden = false;
     history.length = 0;
+    show("chat");
     showGate();
   };
 
   fetch("/api/session").then((r) => (r.ok ? showApp() : showGate())).catch(showGate);
 
+  // ---- tabs ----
+  const VIEWS = ["chat", "held", "messages", "activity", "people"];
+  function show(name) {
+    for (const v of VIEWS) {
+      $("view-" + v).hidden = v !== name;
+      $("tab-" + v).setAttribute("aria-selected", String(v === name));
+    }
+    if (name === "held") refreshHeld(true);
+    if (name === "messages") loadMessages();
+    if (name === "activity") loadActivity();
+    if (name === "people") loadPeople();
+  }
+  document.querySelectorAll("[data-tab]").forEach((b) => (b.onclick = () => show(b.dataset.tab)));
+
+  // ---- status chips (the two switches) ----
+  const autoBtn = $("autoBtn"), directBtn = $("directBtn");
+  function setChip(button, label, state, on, offClass) {
+    button.className = "chip " + (on ? "on" : offClass);
+    button.textContent = `${label}: ${state}`;
+    button.setAttribute("aria-pressed", String(on));
+  }
+  function applyStatus(s) {
+    autoOn = s.auto_reply; directOn = s.direct_send;
+    setChip(autoBtn, "Auto-reply", autoOn ? "On" : "Paused", autoOn, "warn");
+    setChip(directBtn, "Direct send", directOn ? "On" : "Off", directOn, "off");
+    const badge = $("heldCount");
+    badge.hidden = !s.held;
+    badge.textContent = s.held;
+  }
+  async function loadStatus() {
+    try { applyStatus(await api("/api/status")); } catch { /* lock screen handles it */ }
+  }
+  async function flip(button, path, next, message) {
+    button.disabled = true;
+    try {
+      applyStatus(await api(path, { enabled: next }));
+      bubble("bot", message);
+    } catch (err) {
+      bubble("bot", err.message, true);
+    } finally {
+      button.disabled = false;
+    }
+  }
+  autoBtn.onclick = () => flip(autoBtn, "/api/auto-reply", !autoOn, autoOn
+    ? "Auto-reply is paused. Every reply now waits in Held for your approval." : "Auto-reply is on.");
+  directBtn.onclick = () => flip(directBtn, "/api/direct-send", !directOn, directOn
+    ? "Direct send is off. I'll show a card to confirm before anything goes out." : "Direct send is on. What you tell me to send goes out immediately.");
+
+  // ---- voice chat: dictate -> sent right away -> answer spoken (preference kept on this device) ----
+  const voiceBtn = $("voiceBtn"), voice = $("voice");
+  let voiceChat = true, audioUnlocked = false;
+  try { voiceChat = localStorage.getItem("voiceChat") !== "0"; } catch { /* private mode */ }
+  function renderVoiceChip() { setChip(voiceBtn, "Voice chat", voiceChat ? "On" : "Off", voiceChat, "off"); }
+  renderVoiceChip();
+  voiceBtn.onclick = () => {
+    voiceChat = !voiceChat;
+    try { localStorage.setItem("voiceChat", voiceChat ? "1" : "0"); } catch { /* ignore */ }
+    renderVoiceChip();
+    if (!voiceChat && wakeOn) setWake(false);
+    bubble("bot", voiceChat
+      ? "Voice chat is on. When you dictate, I answer out loud. Messages you ask me to send go out right away, and I read back what I sent."
+      : "Voice chat is off. Dictation just fills the text box.");
+  };
+
+  // Browsers only allow sound after a tap, so the first tap "unlocks" the player.
+  const SILENT = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+  function unlockAudio() {
+    if (audioUnlocked) return;
+    audioUnlocked = true;
+    voice.src = SILENT;
+    voice.play().catch(() => {});
+  }
+  // ---- the orb: appears while you talk to the assistant ----
+  const orbWrap = $("orbWrap"), orbEl = $("orb"), orbLabel = $("orbLabel"), orbCaption = $("orbCaption"), orbClose = $("orbClose");
+  const ORB_TEXT = { listening: ["Listening…", "بسمعك…"], thinking: ["Thinking…", "بفكر…"], speaking: ["Speaking…", "بتكلم…"] };
+  const ORB_BUTTON = { listening: "Done", thinking: "Hide", speaking: "Stop" };
+  let orbState = "off", orbLevel = 0, orbTarget = 0, orbRaf = 0, orbDismissed = false, orbAr = false, orbMeter = false, voiceAn = null;
+
+  function setOrb(state, caption) {
+    if (state !== "off" && orbDismissed) return;
+    orbState = state;
+    orbWrap.classList.toggle("on", state !== "off");
+    orbWrap.dataset.state = state;
+    if (state === "off") return;
+    orbLabel.textContent = ORB_TEXT[state][orbAr ? 1 : 0];
+    orbClose.textContent = ORB_BUTTON[state];
+    if (caption !== undefined) orbCaption.textContent = caption;
+    if (!orbRaf) orbRaf = requestAnimationFrame(orbTick);
+  }
+  function voiceLevel() {                          // how loud the assistant's voice is right now
+    if (!voiceAn) return voice.paused ? 0.03 : 0.3 + 0.25 * Math.abs(Math.sin(performance.now() / 140));
+    voiceAn.an.getByteTimeDomainData(voiceAn.buf);
+    let sum = 0;
+    for (const v of voiceAn.buf) sum += ((v - 128) / 128) ** 2;
+    return Math.min(1, Math.sqrt(sum / voiceAn.buf.length) * 3.4);
+  }
+  function orbTick(t) {
+    if (orbState === "off") { orbRaf = 0; orbLevel = 0; orbEl.style.setProperty("--lvl", 0); return; }
+    const target = orbState === "speaking" ? voiceLevel()
+      : orbState === "thinking" ? 0.12 + 0.1 * Math.sin(t / 260)
+      : orbMeter ? orbTarget : 0.2 + 0.15 * Math.sin(t / 300);   // listening: follows the microphone
+    orbLevel += (target - orbLevel) * 0.25;
+    orbEl.style.setProperty("--lvl", orbLevel.toFixed(3));
+    orbRaf = requestAnimationFrame(orbTick);
+  }
+  // Lets the orb react to the assistant's real voice. Skipped if the browser won't allow it yet,
+  // because routing audio through a suspended context would make it silent.
+  async function ensureVoiceAnalyser() {
+    if (voiceAn) return;
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      await Promise.race([ctx.resume(), new Promise((r) => setTimeout(r, 300))]);
+      if (ctx.state !== "running") return void ctx.close();
+      const an = ctx.createAnalyser();
+      an.fftSize = 512; an.smoothingTimeConstant = 0.6;
+      ctx.createMediaElementSource(voice).connect(an);
+      an.connect(ctx.destination);
+      voiceAn = { an, buf: new Uint8Array(an.fftSize) };
+    } catch { /* plain playback still works */ }
+  }
+  function closeOrb() {
+    if (orbState === "listening" && recorder) return recorder.stop();   // "Done": send what I said
+    orbDismissed = true;
+    stopSpeech();
+    setOrb("off");
+  }
+  orbClose.onclick = closeOrb;
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && orbState !== "off") closeOrb(); });
+
+  // Plays several short clips one after another (each message is its own clip, so each gets the right voice).
+  let speechToken = 0, speechError = "";
+  function stopSpeech() { speechToken++; voice.pause(); }
+  async function fetchAudio(text) {
+    try {
+      const res = await fetch("/api/speak", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+      if (res.status === 401) { showGate(); return null; }
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || "Couldn't make the voice.");
+      return URL.createObjectURL(await res.blob());
+    } catch (err) { speechError = err.message; return null; }
+  }
+  function playUrl(url) {
+    return new Promise((resolve) => {
+      const done = (ok = true) => { voice.onended = voice.onpause = voice.onerror = null; URL.revokeObjectURL(url); resolve(ok); };
+      voice.onended = voice.onpause = voice.onerror = () => done();
+      voice.src = url;
+      voice.play().catch(() => done(false));
+    });
+  }
+  async function speakMany(texts, orbOn = false) {
+    texts = texts.filter((t) => t && t.trim());
+    if (!texts.length) { if (orbOn) setOrb("off"); return; }
+    stopSpeech();
+    const token = speechToken;
+    holdWake();                                   // don't listen for the name while talking
+    try {
+      const ready = ensureVoiceAnalyser();
+      let next = fetchAudio(texts[0]);
+      for (let i = 0; i < texts.length; i++) {
+        const url = await next;
+        if (token !== speechToken) { if (url) URL.revokeObjectURL(url); return; }
+        if (i + 1 < texts.length) next = fetchAudio(texts[i + 1]);   // fetch the next clip while this one plays
+        if (!url) return void bubble("bot", speechError || "Couldn't make the voice.", true);
+        await ready;
+        if (orbOn) setOrb("speaking", texts[i]);
+        if (!(await playUrl(url))) return void bubble("bot", "Your browser blocked the sound. Tap anywhere on the page, then press Listen.", true);
+        if (token !== speechToken) return;
+      }
+    } finally { releaseWake(); if (orbOn && token === speechToken) setOrb("off"); }
+  }
+  function addListen(bubbleEl, parts) {
+    const b = btn("Listen", "listen");
+    b.onclick = () => { unlockAudio(); speakMany(parts); };
+    bubbleEl.append(b);
+  }
+  document.addEventListener("pointerdown", unlockAudio, { once: true });   // one tap anywhere allows sound
+
+  // What gets read aloud for a list of messages: who it's from, then what they said. No model involved.
+  const isArabicText = (t) => /[\u0600-\u06FF]/.test(t);
+  function messageScript(items, intro, arabic) {
+    const MAX = 8;                                                     // items come newest first
+    const shown = items.slice(0, MAX).reverse(), rest = items.length - shown.length;   // read the newest ones, oldest of those first
+    const single = new Set(items.map((m) => m.name)).size === 1;
+    const parts = [intro.replace(/[:：]\s*$/, "")];
+    for (const m of shown) {
+      const out = m.direction === "out";
+      const body = /^\[Image received\]/.test(m.body) ? (arabic ? "بعتلك صورة" : "sent a photo") : m.body;
+      parts.push(out ? `${arabic ? "انتي لـ " : "You to "}${m.name}: ${body}`
+                     : single ? body : `${m.name}: ${body}`);
+    }
+    if (rest > 0) parts.push(arabic ? `وفي ${rest} رسايل أقدم على الشاشة` : `and ${rest} earlier ones on screen`);
+    return parts;
+  }
+
+  // ---- wake word: say the assistant's name to talk without touching the mic ----
+  // Works in Chrome/Edge (their speech service hears the name, so audio goes to that service while it is on).
+  // To rename the assistant, change ASSISTANT_NAME and the WAKE list (spellings the recognizer may produce).
+  const ASSISTANT_NAME = "Mika";
+  const WAKE = /(mika|meeka|mica|ميكا|ميكي|ميكى|ميكه|ميكة)/i;
+  const WAKE_LEAD = new RegExp("^[\\s,،.:!؟?-]*(?:" + WAKE.source + ")[\\s,،.:!؟?-]*", "i");
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const wakeBtn = $("wakeBtn");
+  let wakeOn = false, wakeRec = null, wakeHolds = 0, wakeDelay = 400, beepCtx = null;
+  try { wakeOn = localStorage.getItem("wake") === "1" && !!SR; } catch { /* private mode */ }
+
+  function renderWakeChip() { setChip(wakeBtn, `Say ${ASSISTANT_NAME}`, wakeOn ? "On" : "Off", wakeOn, "off"); }
+  renderWakeChip();
+
+  function beep() {
+    try {
+      beepCtx = beepCtx || new (window.AudioContext || window.webkitAudioContext)();
+      beepCtx.resume();
+      const o = beepCtx.createOscillator(), g = beepCtx.createGain();
+      o.frequency.value = 880; g.gain.value = 0.08;
+      o.connect(g); g.connect(beepCtx.destination);
+      o.start(); o.stop(beepCtx.currentTime + 0.12);
+    } catch { /* the pulsing mic is the visual cue anyway */ }
+  }
+
+  function startWake() {
+    if (!SR || !wakeOn || wakeHolds > 0 || wakeRec || app.hidden) return;
+    const r = new SR();
+    r.lang = "ar-EG"; r.continuous = true; r.interimResults = true; r.maxAlternatives = 3;   // only used to hear the name
+    r.onresult = (e) => {
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const heard = Array.from(e.results[i]).map((x) => x.transcript).find((t) => WAKE.test(t));
+        if (heard) return onWake();
+      }
+    };
+    r.onerror = (e) => {
+      if (e.error === "not-allowed" || e.error === "service-not-allowed") setWake(false, "Microphone or speech service is blocked, so hands-free is off.");
+      else if (e.error === "network") wakeDelay = 5000;
+    };
+    r.onend = () => { if (wakeRec === r) wakeRec = null; if (wakeOn && wakeHolds === 0) setTimeout(startWake, wakeDelay); wakeDelay = 400; };
+    wakeRec = r;
+    try { r.start(); } catch { wakeRec = null; }
+  }
+  function stopWake() {
+    const r = wakeRec; wakeRec = null;
+    if (r) { r.onend = r.onresult = r.onerror = null; try { r.abort(); } catch { /* already stopped */ } }
+  }
+  function holdWake() { wakeHolds++; stopWake(); }
+  function releaseWake() { wakeHolds = Math.max(0, wakeHolds - 1); if (wakeHolds === 0) setTimeout(startWake, 300); }
+
+  // The browser's Arabic recognizer would turn English into Arabic letters, so it only listens for the name.
+  // The question itself is recorded and transcribed by Whisper, which handles Arabic and English.
+  function onWake() {
+    holdWake();
+    stopSpeech();
+    beep();
+    startRecording(true, releaseWake);
+  }
+
+  function setWake(on, problem) {
+    wakeOn = on;
+    try { localStorage.setItem("wake", on ? "1" : "0"); } catch { /* ignore */ }
+    renderWakeChip();
+    if (on) { startWake(); } else { stopWake(); }
+    if (problem) bubble("bot", problem, true);
+  }
+  wakeBtn.onclick = () => {
+    if (!SR) return bubble("bot", "Hands-free needs Chrome or Edge (on a computer or Android).", true);
+    if (!window.isSecureContext) return bubble("bot", "Hands-free needs an HTTPS link.", true);
+    unlockAudio();
+    if (!wakeOn && !voiceChat) { voiceChat = true; renderVoiceChip(); }
+    setWake(!wakeOn);
+    if (wakeOn) bubble("bot", `Hands-free is on. Say "${ASSISTANT_NAME}", then your question (Arabic or English). You can pause after the name, or go straight on. Keep this tab open. Messages you ask me to send go out right away, and I read back what I sent.`);
+    else bubble("bot", "Hands-free is off.");
+  };
+
   // ---- chat ----
   function bubble(role, text, isError) {
-    const d = document.createElement("div");
-    d.className = `msg ${role}${isError ? " err" : ""}`;
+    $("empty").hidden = true;
+    const d = el("div", `msg ${role}${isError ? " err" : ""}`, text);
     d.dir = "auto";
-    d.textContent = text;
     log.append(d);
     log.scrollTop = log.scrollHeight;
     return d;
+  }
+  function thinking() {
+    $("empty").hidden = true;
+    const d = el("div", "msg bot typing");
+    d.setAttribute("aria-label", "Thinking");
+    d.append(el("i"), el("i"), el("i"));
+    log.append(d);
+    log.scrollTop = log.scrollHeight;
+    return d;
+  }
+  function say(bubbleEl, text, isError) {
+    bubbleEl.className = `msg bot${isError ? " err" : ""}`;
+    bubbleEl.dir = "auto";
+    bubbleEl.textContent = text;
+  }
+
+  function renderSuggestions() {
+    const who = contactNames[0] || "Mom";
+    const ideas = ["Who messaged me today?", `Show what ${who} sent today`, `Tell ${who} I'll be late`];
+    $("suggest").replaceChildren(...ideas.map((t) => {
+      const b = btn(t, "");
+      b.onclick = () => { box.value = t; box.focus(); };   // fills the box only: you decide when to run it
+      return b;
+    }));
+  }
+  async function loadContacts() {
+    try {
+      contactNames = (await api("/api/contacts")).contacts;
+      renderSuggestions();
+      const keep = $("fContact").value;
+      $("fContact").replaceChildren(new Option("Everyone", ""), ...contactNames.map((n) => new Option(n, n)));
+      $("fContact").value = keep;
+    } catch { /* ignore */ }
   }
 
   function position() {
@@ -185,150 +661,87 @@
         { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
     });
   }
+  async function doSend(action) {
+    if (action.type === "text") return api("/api/send-text", { contact: action.contact, text: action.text });
+    const p = await position();
+    return api("/api/send-location", {
+      contact: action.contact, latitude: p.coords.latitude, longitude: p.coords.longitude, accuracy: p.coords.accuracy,
+    });
+  }
+  const failText = (err) => (err.code === 1 ? "Location permission was denied." : err.message);
 
-  function btn(label, cls) {
-    const b = document.createElement("button");
-    b.type = "button"; b.className = cls; b.textContent = label;
-    return b;
+  // Direct send: the server only proposes; the page performs it through the same validated routes.
+  async function autoSend(host, action, readBack) {   // readBack: "ar" | "en" | undefined (spoken requests get read back)
+    try {
+      await doSend(action);
+      say(host, action.type === "text" ? `Sent to ${action.contact}:\n${action.text}` : `Location sent to ${action.contact}.`);
+      if (readBack) speakMany(action.type === "text"
+        ? [readBack === "ar" ? `الرسالة اتبعتت لـ ${action.contact}` : `Sent to ${action.contact}`, action.text]
+        : [readBack === "ar" ? `موقعك اتبعت لـ ${action.contact}` : `Location sent to ${action.contact}`], true);
+    } catch (err) {
+      say(host, `Couldn't send: ${failText(err)}\nReview it and press Send to retry.`, true);
+      showProposal(host, action);
+      if (readBack) speakMany([readBack === "ar" ? "معرفتش ابعت. راجعي الرسالة على الشاشة" : "I couldn't send it. Check the message on screen."], true);
+    }
   }
 
-  // The model only PROPOSES. Nothing is sent until the owner presses Send here.
+  // Review card (drafts, or when Direct send is off, or after a failed direct send).
   function showProposal(host, action) {
-    const card = document.createElement("div");
-    card.className = "draft";
+    const card = el("div", "draft");
     card.dir = "auto";
-    card.textContent = action.type === "text"
-      ? `To ${action.contact}:\n${action.text}`
-      : `Your current location → ${action.contact}`;
-
-    const row = document.createElement("div");
-    row.className = "row";
+    card.textContent = action.type === "text" ? `To ${action.contact}:\n${action.text}` : `Your current location → ${action.contact}`;
+    const row = el("div", "row");
     const send = btn("Send", "go"), cancel = btn("Cancel", "ghost");
     row.append(send, cancel);
     card.append(row);
     host.append(card);
-
-    const setBusy = (busy) => row.querySelectorAll("button").forEach((b) => (b.disabled = busy));
-
+    const busy = (b) => row.querySelectorAll("button").forEach((x) => (x.disabled = b));
     send.onclick = async () => {
-      setBusy(true);
-      try {
-        if (action.type === "text") {
-          await api("/api/send-text", { contact: action.contact, text: action.text });
-        } else {
-          const p = await position();
-          await api("/api/send-location", {
-            contact: action.contact,
-            latitude: p.coords.latitude,
-            longitude: p.coords.longitude,
-            accuracy: p.coords.accuracy,
-          });
-        }
-        row.remove();
-        bubble("bot", `Sent to ${action.contact}.`);
-      } catch (err) {
-        setBusy(false);
-        bubble("bot", err.code === 1 ? "Location permission was denied." : err.message, true);
-      }
+      busy(true);
+      try { await doSend(action); row.remove(); bubble("bot", `Sent to ${action.contact}.`); }
+      catch (err) { busy(false); bubble("bot", failText(err), true); }
     };
     cancel.onclick = () => { row.remove(); bubble("bot", "Cancelled."); };
   }
 
-  // ---- approval queue for held replies (the page only ever sends an item id) ----
-  const heldPanel = $("held"), heldBtn = $("heldBtn");
-  const panels = { held: heldPanel, activity: $("activity"), people: $("people") };
-  function togglePanel(name) {
-    for (const [key, el] of Object.entries(panels)) el.hidden = key === name ? !el.hidden : true;
-    if (panels[name].hidden) return;
-    if (name === "activity") loadActivity();
-    if (name === "people") loadPeople();
+  // ---- message lists (chat results and the Messages tab share this) ----
+  const OUTCOME = { replied: "answered automatically", held: "held for you", auto: "auto-reply",
+                    held_sent: "sent after your approval", dashboard: "sent from this dashboard" };
+  function fmtTime(ts) {
+    const d = new Date(ts * 1000), today = d.toDateString() === new Date().toDateString();
+    return d.toLocaleString([], today ? { hour: "2-digit", minute: "2-digit" }
+      : { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
   }
-  heldBtn.onclick = () => togglePanel("held");
-  $("activityBtn").onclick = () => togglePanel("activity");
-  $("peopleBtn").onclick = () => togglePanel("people");
-
-  // ---- kill switch ----
-  const autoBtn = $("autoBtn");
-  let autoOn = true;
-  function renderAuto() {
-    autoBtn.textContent = `Auto-reply: ${autoOn ? "On" : "Paused"}`;
-    autoBtn.className = autoOn ? "ghost" : "rec";
-    autoBtn.setAttribute("aria-pressed", String(autoOn));
-  }
-  async function loadStatus() {
-    try { autoOn = (await api("/api/status")).auto_reply; renderAuto(); } catch { /* lock screen handles it */ }
-  }
-  autoBtn.onclick = async () => {
-    autoBtn.disabled = true;
-    try {
-      autoOn = (await api("/api/auto-reply", { enabled: !autoOn })).auto_reply;
-      renderAuto();
-      bubble("bot", autoOn ? "Auto-reply is on." : "Auto-reply is paused. Every reply now waits in Held for your approval.");
-    } catch (err) {
-      bubble("bot", err.message, true);
-    } finally {
-      autoBtn.disabled = false;
+  function renderMessages(items) {
+    const wrap = el("div", "mlist");
+    if (!items.length) { wrap.append(note("No messages found.")); return wrap; }
+    for (const m of items) {
+      const out = m.direction === "out";
+      const row = el("div", `mrow ${out ? "out" : "in"}`);
+      row.style.setProperty("--h", hueOf(m.name));
+      const meta = el("div", "from");
+      meta.append(el("span", "who", `${out ? "You → " : ""}${m.name || "Unknown"}`),
+                  ` · ${fmtTime(m.ts)}${OUTCOME[m.outcome] ? " · " + OUTCOME[m.outcome] : ""}`);
+      const body = el("div", "", m.body);
+      body.dir = "auto";
+      const content = el("div", "mbody");
+      content.append(meta, body);
+      row.append(avatar(m.name), content);
+      wrap.append(row);
     }
-  };
-
-  // ---- activity feed (from the audit log) ----
-  const who = (a) => a.name || a.target || "someone";
-  const ACTIVITY = {
-    auto_reply: (a) => `Replied automatically to ${who(a)}`,
-    held: (a) => `Held a reply to ${who(a)} for your approval`,
-    held_sent: (a) => `You sent a held reply to ${who(a)}`,
-    held_dismissed: () => "You dismissed a held reply",
-    auto_reply_toggled: (a) => `Auto-reply turned ${a.target}`,
-    mode_changed: (a) => `Contact setting changed: ${a.target}`,
-  };
-  const note = (text) => Object.assign(document.createElement("p"), { textContent: text });
-
-  async function loadActivity() {
-    const el = panels.activity;
-    try {
-      const { items } = await api("/api/audit?limit=50");
-      el.replaceChildren(...(items.length ? items.map((a) => {
-        const row = document.createElement("div");
-        row.className = "draft";
-        const when = document.createElement("div");
-        when.className = "from";
-        when.textContent = new Date(a.ts * 1000).toLocaleString();
-        const what = document.createElement("div");
-        what.dir = "auto";
-        what.textContent = (ACTIVITY[a.kind] || (() => a.kind))(a);
-        row.append(when, what);
-        return row;
-      }) : [note("No activity yet.")]));
-    } catch (err) { el.replaceChildren(note(err.message)); }
+    return wrap;
   }
-
-  // ---- per-contact modes ----
-  const MODES = { auto: "Reply automatically", hold: "Always ask me first", ignore: "Ignore" };
-  async function loadPeople() {
-    const el = panels.people;
+  async function loadMessages() {
+    const list = $("messagesList");
     try {
-      const { contacts } = await api("/api/contact-modes");
-      el.replaceChildren(...(contacts.length ? contacts.map((c) => {
-        const row = document.createElement("div");
-        row.className = "draft person";
-        const label = document.createElement("span");
-        label.dir = "auto";
-        label.textContent = c.name;
-        const select = document.createElement("select");
-        select.setAttribute("aria-label", `Mode for ${c.name}`);
-        for (const [value, text] of Object.entries(MODES)) select.add(new Option(text, value, false, value === c.mode));
-        select.onchange = async () => {
-          select.disabled = true;
-          try { await api("/api/contact-modes", { name: c.name, mode: select.value }); }
-          catch (err) { bubble("bot", err.message, true); loadPeople(); }
-          finally { select.disabled = false; }
-        };
-        row.append(label, select);
-        return row;
-      }) : [note("No contacts yet. Add names to contacts.json.")]));
-    } catch (err) { el.replaceChildren(note(err.message)); }
+      const q = new URLSearchParams({ contact: $("fContact").value, range: $("fRange").value, direction: $("fDir").value });
+      const { items } = await api(`/api/messages?${q}`);
+      list.replaceChildren(renderMessages(items));
+    } catch (err) { list.replaceChildren(note(err.message)); }
   }
+  ["fContact", "fRange", "fDir"].forEach((id) => ($(id).onchange = loadMessages));
 
+  // ---- held replies ----
   const REASONS = {
     needs_owner: "Needs you to answer",
     not_grounded: "May contain a fact it wasn't sure about",
@@ -336,39 +749,33 @@
     paused: "Auto-reply was paused",
     contact_mode: "This contact is set to always ask you first",
   };
+  const heldList = $("heldList");
 
   function heldCard(item) {
-    const card = document.createElement("div");
-    card.className = "draft";
-    const incoming = document.createElement("div");
-    incoming.className = "from";
+    const card = el("div", "draft");
+    const incoming = el("div", "from", `${item.name || item.from}: ${item.incoming}`);
     incoming.dir = "auto";
-    incoming.textContent = `${item.name || item.from}: ${item.incoming}`;
-    const why = document.createElement("div");
-    why.className = "from";
-    why.textContent = item.reason ? `Why held: ${REASONS[item.reason] || item.reason}` : "";
-    const edit = document.createElement("textarea");
-    edit.value = item.reply;
-    edit.dir = "auto";
-    edit.rows = 2;
-    const row = document.createElement("div");
-    row.className = "row";
+    const edit = el("textarea");
+    edit.value = item.reply; edit.dir = "auto"; edit.rows = 2;
+    const row = el("div", "row");
     const send = btn("Send", "go"), dismiss = btn("Dismiss", "ghost");
     row.append(send, dismiss);
-    card.append(...(item.reason ? [incoming, why] : [incoming]), edit, row);
+    const info = el("div", "mbody");
+    info.append(incoming);
+    if (item.reason) info.append(el("div", "from", `Why held: ${REASONS[item.reason] || item.reason}`));
+    const top = el("div", "hhead");
+    top.append(avatar(item.name || item.from), info);
+    card.append(top, edit, row);
 
     const act = (path, makeBody, doneText) => async () => {
-      const setBusy = (busy) => row.querySelectorAll("button").forEach((b) => (b.disabled = busy));
-      setBusy(true);
+      const busy = (b) => row.querySelectorAll("button").forEach((x) => (x.disabled = b));
+      busy(true);
       try {
         await api(path, makeBody());
         card.remove();
         bubble("bot", doneText);
         refreshHeld(true);
-      } catch (err) {
-        setBusy(false);
-        bubble("bot", err.message, true);
-      }
+      } catch (err) { busy(false); bubble("bot", err.message, true); }
     };
     send.onclick = act(`/api/held/${item.id}/send`, () => ({ text: edit.value }), "Reply sent.");
     dismiss.onclick = act(`/api/held/${item.id}/dismiss`, () => ({}), "Dismissed.");
@@ -377,100 +784,213 @@
 
   async function refreshHeld(force) {
     if (app.hidden) return;
-    // don't wipe a reply the user is in the middle of editing
-    if (!force && heldPanel.contains(document.activeElement)) return;
+    if (!force && heldList.contains(document.activeElement)) return;   // don't wipe a reply being edited
     try {
-      const { items } = await api("/api/held");
-      heldBtn.textContent = items.length ? `Held (${items.length})` : "Held";
-      const empty = Object.assign(document.createElement("p"), { textContent: "Nothing waiting for approval." });
-      heldPanel.replaceChildren(...(items.length ? items.map(heldCard) : [empty]));
-    } catch (err) {
-      /* session expired (the lock screen is already showing) or backend offline */
-    }
+      const [{ items }, status] = await Promise.all([api("/api/held"), api("/api/status")]);
+      applyStatus(status);
+      heldList.replaceChildren(...(items.length ? items.map(heldCard) : [note("Nothing waiting for approval.")]));
+    } catch { /* session expired (lock screen showing) or backend offline */ }
   }
   setInterval(refreshHeld, 30000);
 
-  // ---- dictation: record, transcribe on the server, fill the box. Never auto-sends. ----
-  const micBtn = $("mic"), langBtn = $("lang");
-  let lang = "ar", recorder = null, stopTimer = null;
-
-  langBtn.onclick = () => {
-    lang = lang === "ar" ? "en" : "ar";
-    langBtn.textContent = lang.toUpperCase();
-    langBtn.setAttribute("aria-label", `Dictation language: ${lang === "ar" ? "Arabic" : "English"}`);
+  // ---- activity ----
+  const who = (a) => a.name || a.target || "someone";
+  const ACTIVITY = {
+    auto_reply: (a) => `Replied automatically to ${who(a)}`,
+    held: (a) => `Held a reply to ${who(a)} for your approval`,
+    held_sent: (a) => `You sent a held reply to ${who(a)}`,
+    held_dismissed: () => "You dismissed a held reply",
+    auto_reply_toggled: (a) => `Auto-reply turned ${a.target}`,
+    direct_send_toggled: (a) => `Direct send turned ${a.target}`,
+    mode_changed: (a) => `Contact setting changed: ${a.target}`,
   };
-
-  function setMic(state) {
-    micBtn.disabled = state === "busy";
-    micBtn.className = state === "rec" ? "rec" : "ghost";
-    micBtn.textContent = { idle: "Dictate", rec: "Stop", busy: "Transcribing…" }[state];
+  async function loadActivity() {
+    const list = $("activityList");
+    try {
+      const { items } = await api("/api/audit?limit=50");
+      list.replaceChildren(...(items.length ? items.map((a) => {
+        const row = el("div", "draft");
+        row.dataset.kind = a.kind;
+        const what = el("div", "", (ACTIVITY[a.kind] || (() => a.kind))(a));
+        what.dir = "auto";
+        row.append(el("div", "from", new Date(a.ts * 1000).toLocaleString()), what);
+        return row;
+      }) : [note("No activity yet.")]));
+    } catch (err) { list.replaceChildren(note(err.message)); }
   }
 
-  micBtn.onclick = async () => {
-    if (recorder) return recorder.stop();
-    if (!window.isSecureContext || !navigator.mediaDevices || !window.MediaRecorder)
-      return bubble("bot", "Dictation needs an HTTPS link and a browser that supports recording.", true);
-
-    let stream;
+  // ---- per-contact modes ----
+  const MODES = { auto: "Reply automatically", hold: "Always ask me first", ignore: "Ignore" };
+  async function loadPeople() {
+    const list = $("peopleList");
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
-      return bubble("bot", "Microphone permission was denied.", true);
-    }
+      const { contacts } = await api("/api/contact-modes");
+      list.replaceChildren(...(contacts.length ? contacts.map((c) => {
+        const row = el("div", "draft person");
+        const label = el("span", "", c.name);
+        label.dir = "auto";
+        const select = el("select");
+        select.setAttribute("aria-label", `Mode for ${c.name}`);
+        for (const [value, text] of Object.entries(MODES)) select.add(new Option(text, value, false, value === c.mode));
+        select.onchange = async () => {
+          select.disabled = true;
+          try { await api("/api/contact-modes", { name: c.name, mode: select.value }); }
+          catch (err) { bubble("bot", err.message, true); loadPeople(); }
+          finally { select.disabled = false; }
+        };
+        const lead = el("div", "hhead");
+        lead.append(avatar(c.name), label);
+        row.append(lead, select);
+        return row;
+      }) : [note("No contacts yet. Add names to contacts.json.")]));
+    } catch (err) { list.replaceChildren(note(err.message)); }
+  }
 
-    const mime = ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus"]
-      .find((t) => MediaRecorder.isTypeSupported(t));
+  // ---- dictation: record, transcribe on the server (Whisper) ----
+  const micBtn = $("mic"), langBtn = $("lang");
+  const SVG = (inner) => `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+  const MIC_ICON = SVG('<rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>');
+  const STOP_ICON = SVG('<rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/>');
+  let lang = "auto", recorder = null, stopTimer = null;
+
+  langBtn.onclick = () => {
+    lang = { auto: "ar", ar: "en", en: "auto" }[lang];
+    langBtn.textContent = lang.toUpperCase();
+    langBtn.setAttribute("aria-label", `Dictation language: ${{ auto: "automatic", ar: "Arabic", en: "English" }[lang]}`);
+  };
+  function setMic(state) {
+    micBtn.disabled = state === "busy";
+    micBtn.className = "round" + (state === "rec" ? " rec" : "");
+    micBtn.innerHTML = state === "rec" ? STOP_ICON : state === "busy" ? "…" : MIC_ICON;
+    const label = { idle: "Dictate", rec: "Stop recording", busy: "Transcribing" }[state];
+    micBtn.setAttribute("aria-label", label);
+    micBtn.title = label;
+  }
+  setMic("idle");
+
+  // Meters the microphone. With `stop` it also ends the recording ~1.4 s after you stop talking (and gives up
+  // after 6 s of silence). `onLevel(peak, live)` drives the orb.
+  function watchSilence(stream, stop, onLevel) {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    ctx.resume().catch(() => {});
+    const an = ctx.createAnalyser();
+    an.fftSize = 1024;
+    ctx.createMediaStreamSource(stream).connect(an);
+    const buf = new Uint8Array(an.fftSize), t0 = performance.now();
+    let heard = false, lastLoud = t0;
+    const timer = setInterval(() => {
+      const now = performance.now(), live = ctx.state === "running";
+      let peak = 0;
+      if (live) { an.getByteTimeDomainData(buf); for (const v of buf) peak = Math.max(peak, Math.abs(v - 128)); }
+      if (onLevel) onLevel(peak, live);
+      if (!stop) return;
+      if (!live) { if (now - t0 > 6000) stop(false); return; }                  // can't measure: fixed length
+      if (peak > 14) { heard = true; lastLoud = now; }
+      if (heard && now - lastLoud > 1400) stop(false);
+      else if (!heard && now - t0 > 6000) stop(true);
+      else if (now - t0 > 20000) stop(false);
+    }, 60);
+    return () => { clearInterval(timer); ctx.close().catch(() => {}); };
+  }
+
+  async function startRecording(auto = false, onDone = () => {}) {
+    stopSpeech();                        // don't record the assistant's own voice
+    unlockAudio();
+    const showOrb = auto || voiceChat;   // the orb shows whenever this turn is a spoken conversation
+    if (!window.isSecureContext || !navigator.mediaDevices || !window.MediaRecorder) {
+      bubble("bot", "Dictation needs an HTTPS link and a browser that supports recording.", true);
+      return onDone();
+    }
+    let stream;
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+    catch { bubble("bot", "Microphone permission was denied.", true); return onDone(); }
+
+    const mime = ["audio/webm;codecs=opus", "audio/mp4", "audio/ogg;codecs=opus"].find((t) => MediaRecorder.isTypeSupported(t));
     const chunks = [];
+    let discard = false, stopWatch = () => {};
     recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
     recorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
     recorder.onstop = async () => {
       clearTimeout(stopTimer);
+      stopWatch();
       stream.getTracks().forEach((t) => t.stop());
       const type = recorder.mimeType || "application/octet-stream";
       recorder = null;
+      if (discard) { setMic("idle"); setOrb("off"); return onDone(); }
       setMic("busy");
+      if (showOrb) setOrb("thinking", "");
+      let text = "";
       try {
         const res = await fetch(`/api/transcribe?lang=${lang}`, {
-          method: "POST",
-          headers: { "Content-Type": type },
-          body: new Blob(chunks, { type }),
+          method: "POST", headers: { "Content-Type": type }, body: new Blob(chunks, { type }),
         });
         const data = await res.json().catch(() => ({}));
         if (res.status === 401) { showGate(); throw new Error("Session expired. Please sign in again."); }
         if (!res.ok) throw new Error(data.detail || "Transcription failed.");
         if (!data.text) throw new Error("Didn't catch anything. Try again.");
-        box.value = (box.value + " " + data.text).trim();
-        box.focus();
-      } catch (err) {
-        bubble("bot", err.message, true);
-      } finally {
-        setMic("idle");
-      }
+        text = data.text;
+      } catch (err) { bubble("bot", err.message, true); }
+      finally { setMic("idle"); }
+      if (auto) text = text.replace(WAKE_LEAD, "").trim();           // drop the name if the recording caught it
+      if (text) {
+        if (voiceChat || auto) { orbAr = isArabicText(text); setOrb("thinking", text); await ask(text, true); }   // spoken in, spoken out
+        else { box.value = (box.value + " " + text).trim(); box.focus(); }
+      } else setOrb("off");
+      onDone();
     };
     recorder.start();
     setMic("rec");
-    stopTimer = setTimeout(() => recorder && recorder.stop(), 60000); // 60 s cap
+    stopTimer = setTimeout(() => recorder && recorder.stop(), 60000);   // 60 s cap
+    if (showOrb) { orbDismissed = false; orbAr = false; orbMeter = false; setOrb("listening", ""); }
+    if (auto || showOrb) stopWatch = watchSilence(
+      stream,
+      auto ? (gaveUp) => { discard = gaveUp; if (recorder) recorder.stop(); } : null,
+      showOrb ? (peak, live) => { orbMeter = live; orbTarget = Math.min(1, peak / 45); } : null);
+  }
+
+  micBtn.onclick = () => {
+    if (recorder) return recorder.stop();
+    holdWake();
+    startRecording(false, releaseWake);
   };
 
-  $("composer").addEventListener("submit", async (e) => {
+  // ---- ask the assistant (typed or spoken) ----
+  async function ask(text, viaVoice = false) {
+    bubble("me", text);
+    const reply = thinking();
+    try {
+      const r = await api("/api/assistant", { message: text, history: history.slice(-8) });
+      const a = r.action, arabic = isArabicText(text);
+      const direct = !!(a && a.auto);                    // follows the Direct send switch, spoken or typed
+      const readBack = direct && viaVoice && voiceChat;  // after a spoken send, the result is read back
+      const replyText = r.reply || "";
+      say(reply, replyText);
+      // For a list of messages the voice reads them out: who they're from, then what they said.
+      const parts = a && a.type === "messages" ? messageScript(a.items, replyText, arabic) : [replyText];
+      if (replyText) addListen(reply, parts);
+      if (viaVoice && voiceChat && !readBack) speakMany(parts, true);
+      else if (viaVoice && !readBack) setOrb("off");
+      // notes keep context for follow-ups ("make it shorter") without re-sending message contents
+      const noteText = !a ? "" : a.type === "messages" ? `\n[showed ${a.items.length} messages]`
+        : a.type === "text" ? `\n[${direct ? "sent" : "draft"}: ${a.text}]` : "";
+      history.push({ role: "user", content: text }, { role: "assistant", content: replyText + noteText });
+      if (!a) return;
+      if (a.type === "messages") reply.append(renderMessages(a.items));
+      else if (direct) autoSend(reply, a, readBack ? (arabic ? "ar" : "en") : undefined);
+      else showProposal(reply, a);
+      log.scrollTop = log.scrollHeight;
+    } catch (err) {
+      say(reply, err.message, true);
+      setOrb("off");
+    }
+  }
+  $("composer").addEventListener("submit", (e) => {
     e.preventDefault();
     const text = box.value.trim();
     if (!text) return;
-
     box.value = "";
-    bubble("me", text);
-    const reply = bubble("bot", "…");
-    try {
-      const r = await api("/api/assistant", { message: text, history: history.slice(-8) });
-      reply.textContent = r.reply || "";
-      // keep the draft in history so follow-ups like "make it shorter" work
-      const note = r.action && r.action.text ? `\n[draft: ${r.action.text}]` : "";
-      history.push({ role: "user", content: text }, { role: "assistant", content: (r.reply || "") + note });
-      if (r.action) showProposal(reply, r.action);
-    } catch (err) {
-      reply.textContent = err.message;
-      reply.classList.add("err");
-    }
+    unlockAudio();
+    ask(text);
   });
 </script>
 </body>
