@@ -266,6 +266,4 @@ The WhatsApp session folders let anyone who has them use your account.
 - Official WhatsApp Business Cloud API
 - Cost limits and alerts for assistant calls
 
-## License
 
-_Add a license before publishing (for example MIT)._
